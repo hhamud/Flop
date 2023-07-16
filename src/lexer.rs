@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Integer(i64),
@@ -6,31 +8,44 @@ pub enum Token {
     RightRoundBracket,
     LeftSquareBracket,
     RightSquareBracket,
+    EOF,
 }
 
-#[derive(Debug)]
-struct Stack {
-    data: Vec<Token>,
+#[derive(Debug, PartialEq)]
+pub struct Stack {
+    data: VecDeque<Token>,
 }
 
 impl Stack {
-    fn new() -> Self {
-        Self { data: Vec::new() }
+    pub fn new() -> Self {
+        Self {
+            data: Vec::new().into(),
+        }
     }
 
-    fn push(&mut self, token: Token) {
-        self.data.push(token);
+    pub fn push(&mut self, token: Token) {
+        self.data.push_back(token);
     }
 
-    fn pop(&mut self) -> Token {
-        self.data.pop().unwrap()
+    pub fn pop(&mut self) -> Option<Token> {
+        self.data.pop_back()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn last(&self) -> Option<&Token> {
+        self.data.back()
+    }
+
+    pub fn pop_front(&mut self) -> Option<Token> {
+        self.data.pop_front()
     }
 }
 
-fn tokenise(code: String) -> Stack {
+pub fn tokenise(code: String) -> Stack {
     let mut stack = Stack::new();
-
-    let mut current = 0;
 
     let tokens = ["(", ")", "[", "]"];
     let replacement_tokens = ["( ", " )", "[ ", " ]"];
