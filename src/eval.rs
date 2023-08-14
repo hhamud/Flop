@@ -2,8 +2,23 @@ use crate::helpers::eval_test;
 use crate::lexer::tokenise;
 use crate::parser::{Node, Program};
 
-pub fn add(a: i64, b: i64) -> Result<i64, String> {
-    Ok(a + b)
+pub fn add(ast: &Vec<Node>) -> Result<i64, String> {
+    let mut sum = 0;
+    for operand in &ast[1..] {
+        sum += evaluate(operand)?
+    }
+    Ok(sum)
+}
+
+pub fn sub(ast: &Vec<Node>) -> Result<i64, String> {
+    // 0 - 1 - 2
+    // start with the first number
+    // vec[node::integer, node::integer]
+    let mut sum = 0;
+    for operand in &ast[1..] {
+        sum -= evaluate(operand)?
+    }
+    Ok(sum)
 }
 
 pub fn evaluate(ast: &Node) -> Result<i64, String> {
@@ -15,21 +30,8 @@ pub fn evaluate(ast: &Node) -> Result<i64, String> {
             let operation = &v[0];
             match operation {
                 Node::Symbol(s) => match s.as_str() {
-                    "+" => {
-                        let mut sum = 0;
-                        for operand in &v[1..] {
-                            sum += evaluate(operand)?
-                        }
-                        Ok(sum)
-                    }
-                    "-" => {
-                        // start value from actual number and not from 0
-                        let mut minus = 0;
-                        for operand in &v[1..] {
-                            minus -= evaluate(operand)?
-                        }
-                        Ok(minus)
-                    }
+                    "+" => add(v),
+                    "-" => sub(v),
                     _ => Err("Unsupported operation".to_string()),
                 },
                 _ => Err("First element of an expression should be a symbol".to_string()),
