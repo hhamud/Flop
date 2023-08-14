@@ -1,4 +1,5 @@
 mod eval;
+mod helpers;
 mod lexer;
 mod parser;
 

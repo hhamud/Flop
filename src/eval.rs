@@ -1,3 +1,4 @@
+use crate::helpers::eval_test;
 use crate::lexer::tokenise;
 use crate::parser::{Node, Program};
 
@@ -23,8 +24,8 @@ pub fn evaluate(ast: &Node) -> Result<i64, String> {
                     }
                     "-" => {
                         // start value from actual number and not from 0
-                        let mut minus = &v[1];
-                        for operand in &v[2..] {
+                        let mut minus = 0;
+                        for operand in &v[1..] {
                             minus -= evaluate(operand)?
                         }
                         Ok(minus)
@@ -44,60 +45,36 @@ mod tests {
 
     #[test]
     fn add() {
-        let code = "(+ 1 2)".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, 3)
+        let code = eval_test("(+ 1 2)").unwrap();
+        assert_eq!(code, 3)
     }
 
     #[test]
     fn nested_add() {
-        let code = "(+ 1 (+ 1 2))".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, 4)
+        let code = eval_test("(+ 1 (+ 1 2))").unwrap();
+        assert_eq!(code, 4)
     }
 
     #[test]
     fn minus() {
-        let code = "(- 1 2)".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, -1)
+        let code = eval_test("(- 1 2)").unwrap();
+        assert_eq!(code, -1)
     }
     #[test]
     fn nested_minus() {
-        let code = "(- 1 (- 1 2))".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, 2)
+        let code = eval_test("(- 1 (- 1 2))").unwrap();
+        assert_eq!(code, 2)
     }
 
     #[test]
     fn nested_mixed() {
-        let code = "(+ 1 (- 1 2))".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, 0)
+        let code = eval_test("(+ 1 (- 1 2))").unwrap();
+        assert_eq!(code, 0)
     }
 
     #[test]
     fn nested_mixed2() {
-        let code = "(- 1 (+ 1 2))".to_string();
-        let mut tokens = tokenise(code);
-        let mut program = Program::new();
-        let ast = program.parse(&mut tokens).unwrap();
-        let eval = evaluate(&ast).unwrap();
-        assert_eq!(eval, -2)
+        let code = eval_test("(- 1 (+ 1 2))").unwrap();
+        assert_eq!(code, -2)
     }
 }
