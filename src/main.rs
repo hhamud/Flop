@@ -1,3 +1,4 @@
+mod eval;
 mod lexer;
 mod parser;
 
@@ -11,6 +12,6 @@ fn main() {
 
     match program.parse(&mut tokens) {
         Ok(_) => println!("{:?}", program.body),
-        Err(e) => todo!()
+        Err(e) => todo!(),
     }
 }
