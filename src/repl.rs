@@ -1,11 +1,10 @@
-use std::io::{self, Write};
+use crate::eval::evaluate;
 use crate::lexer::tokenise;
 use crate::parser::Program;
-use crate::eval::evaluate;
+use std::io::{self, Write};
 
 pub fn repl() {
     loop {
-
         print!("> ");
         io::stdout().flush().unwrap();
 
@@ -19,7 +18,7 @@ pub fn repl() {
         let mut tokens = tokenise(input);
         let mut program = Program::new();
 
-        let ast =  program.parse(&mut tokens).unwrap();
+        let ast = program.parse(&mut tokens).unwrap();
 
         match evaluate(&ast) {
             Ok(result) => println!("{}", result),

@@ -43,6 +43,48 @@ impl Program {
         }
     }
 
+    fn parse_list(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
+        let mut nodes = Vec::new();
+        let mut counter = 1;
+
+        while let Some(token) = tokens.pop_front() {
+            match token {
+                Token::Integer(n) => {
+                    nodes.push(Node::Integer(n));
+                }
+
+                Token::Bool(b) => {
+                    nodes.push(Node::Bool(b));
+                }
+
+                // only for nested lists
+                Token::LeftSquareBracket => {
+                    counter += 1;
+                    if counter > 1 {
+                        nodes.push(self.parse_list(tokens)?)
+                    }
+                }
+
+                // only for nested lists
+                Token::RightSquareBracket => {
+                    counter -= 1;
+                    if counter == 0 {
+                        break;
+                    }
+                }
+                _ => {
+                    //panic!("failed")
+                    return Err(ParseError::TokenError(TokenError {
+                        message: "Unexpected token",
+                        token: token,
+                    }));
+                }
+            }
+        }
+
+        Ok(Node::List(nodes))
+    }
+
     fn parse_expression(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
         let mut nodes = Vec::new();
 
@@ -65,6 +107,11 @@ impl Program {
                 Token::Integer(n) => {
                     nodes.push(Node::Integer(n));
                 }
+
+                Token::Bool(b) => {
+                    nodes.push(Node::Bool(b));
+                }
+
                 Token::RightRoundBracket => {
                     // counter exists to count the expression brackets, both left and right
                     counter -= 1;
@@ -74,6 +121,13 @@ impl Program {
                         break;
                     }
                 }
+
+                Token::LeftSquareBracket => nodes.push(self.parse_list(tokens)?),
+
+                Token::RightSquareBracket => {
+                    continue;
+                }
+
                 _ => {
                     return Err(ParseError::TokenError(TokenError {
                         message: "Unexpected token",
@@ -131,6 +185,28 @@ mod tests {
                             Node::Integer(1),
                             Node::Integer(2),
                         ])
+                    ])
+                );
+            }
+
+            Err(e) => {
+                println!("{:?}", e)
+            }
+        }
+    }
+
+    #[test]
+    fn test_list() {
+        let code = "(+ [1 2 3])".to_string();
+        let mut tokens = tokenise(code);
+        let mut program = Program::new();
+        match program.parse(&mut tokens) {
+            Ok(list) => {
+                assert_eq!(
+                    list,
+                    Node::Expression(vec![
+                        Node::Symbol("+".to_string()),
+                        Node::List(vec![Node::Integer(1), Node::Integer(2), Node::Integer(3)])
                     ])
                 );
             }

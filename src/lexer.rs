@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 pub enum Token {
     Integer(i64),
     Symbol(String),
+    Bool(bool),
     LeftRoundBracket,
     RightRoundBracket,
     LeftSquareBracket,
@@ -93,6 +94,24 @@ mod tests {
                 Token::Symbol("+".to_string()),
                 Token::Integer(1),
                 Token::Integer(2),
+                Token::RightRoundBracket,
+            ]
+        )
+    }
+
+    #[test]
+    fn test_lexor_list() {
+        let code = "(+ [1 2])".to_string();
+        let tokens = tokenise(code);
+        assert_eq!(
+            tokens.data,
+            vec![
+                Token::LeftRoundBracket,
+                Token::Symbol("+".to_string()),
+                Token::LeftSquareBracket,
+                Token::Integer(1),
+                Token::Integer(2),
+                Token::RightSquareBracket,
                 Token::RightRoundBracket,
             ]
         )
