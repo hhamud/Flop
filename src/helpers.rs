@@ -6,6 +6,6 @@ pub fn eval_test(code: &str) -> Result<i64, String> {
     let mut tokens = tokenise(code.to_string());
     let mut program = Program::new();
     let ast = program.parse(&mut tokens).unwrap();
-    let eval = evaluate(&ast);
-    Ok(eval?)
+    let eval = evaluate(&ast)?;
+    Ok(eval)
 }
