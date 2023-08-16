@@ -1,4 +1,4 @@
-use crate::eval::evaluate;
+use crate::eval::{evaluate, EvalResult};
 use crate::lexer::tokenise;
 use crate::parser::Program;
 use std::io::{self, Write};
@@ -20,9 +20,10 @@ pub fn repl() {
 
         let ast = program.parse(&mut tokens).unwrap();
 
-        match evaluate(&ast) {
-            Ok(result) => println!("{}", result),
-            Err(e) => println!("Error: {}", e),
+        match evaluate(&ast).unwrap() {
+            EvalResult::Integer(n) => println!("{:?}", n),
+            EvalResult::List(n) => println!("{:?}", n),
+            _ => todo!(),
         }
     }
 }

@@ -1,29 +1,48 @@
 use crate::helpers::eval_test;
-use crate::lexer::tokenise;
-use crate::parser::{Node, Program};
+use crate::parser::Node;
 
-pub fn operation(ast: &Vec<Node>, symbol: &str) -> Result<i64, String> {
-    let mut oper: i64 = evaluate(&ast[1])?;
-
-    for operand in &ast[2..] {
-        match symbol {
-            "+" => oper += evaluate(operand)?,
-            "-" => oper -= evaluate(operand)?,
-            "/" => oper /= evaluate(operand)?,
-            "*" => oper *= evaluate(operand)?,
-            &_ => {
-                todo!()
-            }
-        }
-    }
-    Ok(oper)
+#[derive(Debug)]
+pub enum EvalResult {
+    Integer(i64),
+    Bool(bool),
+    List(Vec<EvalResult>),
 }
 
-pub fn evaluate(ast: &Node) -> Result<i64, String> {
+pub fn operation(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, String> {
+    let mut oper: i64 = match evaluate(&ast[1])? {
+        EvalResult::Integer(n) => n,
+        _ => return Err("Expected integer operand".to_string()),
+    };
+
+    for operand in &ast[2..] {
+        let oper_val = match evaluate(operand)? {
+            EvalResult::Integer(n) => n,
+            _ => return Err("Expected integer operand".to_string()),
+        };
+        match symbol {
+            "+" => oper += oper_val,
+            "-" => oper -= oper_val,
+            "/" => oper /= oper_val,
+            "*" => oper *= oper_val,
+            _ => return Err(format!("Unsupported operation: {}", symbol)),
+        }
+    }
+    Ok(EvalResult::Integer(oper))
+}
+
+pub fn evaluate(ast: &Node) -> Result<EvalResult, String> {
     match ast {
-        Node::Integer(n) => Ok(*n),
+        Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::Symbol(s) => Err("Cannot evaluate a standalone symbol".to_string()),
-        Node::Bool(b) => Err("Cannot evaluate a standalone bool".to_string()),
+        Node::Bool(b) => Ok(EvalResult::Bool(*b)),
+        Node::List(l) => {
+            let mut res = Vec::new();
+            for list in l {
+                res.push(evaluate(&list)?)
+            }
+
+            Ok(EvalResult::List(res))
+        }
         Node::Expression(v) => match &v[0] {
             Node::Symbol(s) => match s.as_str() {
                 s => operation(v, s),
