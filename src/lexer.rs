@@ -9,6 +9,11 @@ pub enum Token {
     RightRoundBracket,
     LeftSquareBracket,
     RightSquareBracket,
+    FunctionDefinition,
+    //FunctionDefinition(String, Vec<String>, Option<DocString>, Body),
+    Body,
+    Comment,
+    DocString,
     EOF,
 }
 
@@ -57,14 +62,15 @@ pub fn tokenise(code: String) -> Stack {
     }
 
     // Split into an array of words using whitespace
-    let program = words.split_whitespace();
+    let mut program = words.split_whitespace();
 
-    for word in program {
+    while let Some(word) = program.next() {
         match word {
             "(" => stack.push(Token::LeftRoundBracket),
             ")" => stack.push(Token::RightRoundBracket),
             "[" => stack.push(Token::LeftSquareBracket),
             "]" => stack.push(Token::RightSquareBracket),
+            "defn" => stack.push(Token::FunctionDefinition),
             _ => {
                 let i = word.parse::<i64>();
                 if i.is_ok() {
@@ -74,6 +80,7 @@ pub fn tokenise(code: String) -> Stack {
                 }
             }
         }
+
     }
 
     stack
@@ -112,6 +119,30 @@ mod tests {
                 Token::Integer(1),
                 Token::Integer(2),
                 Token::RightSquareBracket,
+                Token::RightRoundBracket,
+            ]
+        )
+    }
+
+
+    #[test]
+    fn test_function_definition() {
+        let code = "(defn hi [name] (+ 1 1))".to_string();
+        let tokens = tokenise(code);
+        assert_eq!(
+            tokens.data,
+            vec![
+                Token::LeftRoundBracket,
+                Token::FunctionDefinition,
+                Token::Symbol("hi".to_string()),
+                Token::LeftSquareBracket,
+                Token::Symbol("name".to_string()),
+                Token::RightSquareBracket,
+                Token::LeftRoundBracket,
+                Token::Symbol("+".to_string()),
+                Token::Integer(1),
+                Token::Integer(1),
+                Token::RightRoundBracket,
                 Token::RightRoundBracket,
             ]
         )
