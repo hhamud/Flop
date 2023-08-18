@@ -94,7 +94,7 @@ pub fn tokenise(code: String) -> Stack {
                 }
                 after_function_parameters = false;
             }
-            ch if ch.is_whitespace() => continue,
+            ch if ch.is_whitespace() => continue, //skipping whitespace
             _ => {
                 let mut word = ch.to_string();
                 while let Some(&next_char) = chars.peek() {

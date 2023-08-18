@@ -1,6 +1,6 @@
 use crate::lexer::{tokenise, Stack, Token};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Node {
     Void,
     Integer(i64),
@@ -27,11 +27,11 @@ pub enum ParseError {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Program {
+pub struct Parser {
     pub body: Node,
 }
 
-impl Program {
+impl Parser {
     pub fn new() -> Self {
         Self { body: Node::Void }
     }
@@ -267,7 +267,7 @@ mod tests {
     fn test_parse() {
         let code = "(+ 1 2)".to_string();
         let mut tokens = tokenise(code);
-        let mut program = Program::new();
+        let mut program = Parser::new();
         match program.parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(
@@ -290,7 +290,7 @@ mod tests {
     fn test_parse_nested() {
         let code = "(+ 1 (+ 1 2))".to_string();
         let mut tokens = tokenise(code);
-        let mut program = Program::new();
+        let mut program = Parser::new();
         match program.parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(
@@ -317,7 +317,7 @@ mod tests {
     fn test_list() {
         let code = "(+ [1 2 3])".to_string();
         let mut tokens = tokenise(code);
-        let mut program = Program::new();
+        let mut program = Parser::new();
         match program.parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(
@@ -339,7 +339,7 @@ mod tests {
     fn test_function_definition() {
         let code = r#"(defn hi [name] "lmao" (+ 1 1))"#.to_string();
         let mut tokens = tokenise(code);
-        let mut program = Program::new();
+        let mut program = Parser::new();
         match program.parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(

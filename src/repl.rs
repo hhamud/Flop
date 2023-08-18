@@ -1,9 +1,12 @@
-use crate::eval::{evaluate, EvalResult};
+use crate::eval::{evaluate, Environment, EvalResult};
 use crate::lexer::tokenise;
-use crate::parser::Program;
+use crate::parser::Parser;
 use std::io::{self, Write};
 
 pub fn repl() {
+    let mut parser = Parser::new();
+    let mut env = Environment::new();
+
     loop {
         print!("> ");
         io::stdout().flush().unwrap();
@@ -16,14 +19,13 @@ pub fn repl() {
         }
 
         let mut tokens = tokenise(input);
-        let mut program = Program::new();
+        let ast = parser.parse(&mut tokens).unwrap();
 
-        let ast = program.parse(&mut tokens).unwrap();
-
-        match evaluate(&ast).unwrap() {
+        match evaluate(&ast, &mut env).unwrap() {
             EvalResult::Integer(n) => println!("{:?}", n),
             EvalResult::List(n) => println!("{:?}", n),
-            _ => todo!(),
+            EvalResult::Function(n) => println!("{:?}", n),
+            _ => panic!("failed to evaluate"),
         }
     }
 }
