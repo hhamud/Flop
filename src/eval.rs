@@ -1,5 +1,6 @@
 use crate::helpers::eval_test;
-use crate::parser::Node;
+use crate::lexer::tokenise;
+use crate::parser::{Node, Parser};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -24,7 +25,7 @@ impl Environment {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDefinition {
     name: String,
     parameters: Vec<String>,
@@ -127,11 +128,18 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                     return Err("Expected parameter list".to_string());
                 };
 
+                let mut docstrings: Option<String> = None;
+
+                if let Node::DocString(name) = &nodes[2] {
+                    docstrings = Some(name.to_string());
+                }
+
+                println!("{:?}", nodes);
                 let body = nodes[3].clone();
                 let func_def = Rc::new(FunctionDefinition {
                     name: name.to_string(),
                     parameters,
-                    docstrings: None,
+                    docstrings,
                     body,
                 });
 
@@ -186,8 +194,36 @@ mod tests {
     }
 
     #[test]
-    fn functions() {
-        let code = eval_test("(- 1 (+ 1 2))").unwrap();
-        assert_eq!(code, -2)
+    fn nested_add_function() {
+        let code = r#"(defn add [x y] "info" (+ x y))"#.to_string();
+        let mut tokens = tokenise(code);
+        let mut parser = Parser::new();
+        let ast = parser.parse(&mut tokens).unwrap();
+        let mut env = Environment::new();
+        let eval = evaluate(&ast, &mut env);
+        match eval {
+            Ok(EvalResult::Integer(_)) | Ok(EvalResult::Bool(_)) | Ok(EvalResult::List(_)) => {
+                todo!()
+            }
+            Ok(EvalResult::Function(n)) => {
+                assert_eq!(
+                    n,
+                    Rc::new(FunctionDefinition {
+                        name: "add".to_string(),
+                        parameters: vec!["x".to_string(), "y".to_string()],
+                        docstrings: Some("info".to_string()),
+                        body: Node::Expression(vec![
+                            Node::Symbol("+".to_string()),
+                            Node::Symbol("x".to_string()),
+                            Node::Symbol("y".to_string()),
+                        ])
+                    })
+                )
+            }
+
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
     }
 }

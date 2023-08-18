@@ -1,3 +1,4 @@
+#![feature(peeking_next)]
 use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq)]
@@ -19,7 +20,7 @@ pub enum Token {
 
 #[derive(Debug, PartialEq)]
 pub struct Stack {
-    data: VecDeque<Token>,
+    pub data: VecDeque<Token>,
 }
 
 impl Stack {
@@ -53,34 +54,57 @@ impl Stack {
 pub fn tokenise(code: String) -> Stack {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
-    let mut after_function_parameters = false; // Flag to check if we're after function parameters
+    let mut after_function_parameters = false;
+    let mut skip_next_closing_paren = false;
 
-    while let Some(ch) = chars.next() {
+    while let Some(&ch) = chars.peek() {
         match ch {
             '(' => {
-                stack.push(Token::LeftRoundBracket);
-                after_function_parameters = false;
+                let mut next_chars = Vec::new();
+                let mut next_chars_iter = chars.clone();
+                for _ in 0..5 {
+                    if let Some(&c) = next_chars_iter.peek() {
+                        next_chars.push(c);
+                        next_chars_iter.next();
+                    }
+                }
+
+                let next_chars_string: String = next_chars.into_iter().collect();
+
+                if next_chars_string == "(defn" {
+                    stack.push(Token::FunctionDefinition);
+                    for _ in 0..5 {
+                        chars.next();
+                    }
+                    after_function_parameters = false;
+                    skip_next_closing_paren = true;
+                } else {
+                    stack.push(Token::LeftRoundBracket);
+                    chars.next();
+                    after_function_parameters = false;
+                }
             }
             ')' => {
-                stack.push(Token::RightRoundBracket);
+                if skip_next_closing_paren {
+                    skip_next_closing_paren = false;
+                } else {
+                    stack.push(Token::RightRoundBracket);
+                }
+                chars.next();
                 after_function_parameters = false;
             }
-            '[' => stack.push(Token::LeftSquareBracket),
+            '[' => {
+                stack.push(Token::LeftSquareBracket);
+                chars.next();
+            }
             ']' => {
                 stack.push(Token::RightSquareBracket);
-                after_function_parameters = true; // We're potentially after function parameters now
-            }
-            'd' if chars.peek() == Some(&'e') => {
-                let defn: String = chars.by_ref().take(4).collect();
-                if defn == "efn " {
-                    stack.push(Token::FunctionDefinition);
-                } else {
-                    stack.push(Token::Symbol(format!("d{}", defn)));
-                }
-                after_function_parameters = false;
+                chars.next();
+                after_function_parameters = true;
             }
             '\"' => {
                 let mut res = String::new();
+                chars.next();
                 while let Some(inner_ch) = chars.next() {
                     if inner_ch == '\"' {
                         break;
@@ -94,12 +118,16 @@ pub fn tokenise(code: String) -> Stack {
                 }
                 after_function_parameters = false;
             }
-            ch if ch.is_whitespace() => continue, //skipping whitespace
+            ch if ch.is_whitespace() => {
+                chars.next();
+                continue;
+            }
             _ => {
                 let mut word = ch.to_string();
+                chars.next();
+
                 while let Some(&next_char) = chars.peek() {
-                    if next_char.is_whitespace() || ['(', ')', '[', ']', '\"'].contains(&next_char)
-                    {
+                    if next_char.is_whitespace() || ['(', ')', '[', ']', '\"'].contains(&next_char) {
                         break;
                     }
                     word.push(chars.next().unwrap());
@@ -117,6 +145,7 @@ pub fn tokenise(code: String) -> Stack {
 
     stack
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -174,22 +203,21 @@ mod tests {
 
     #[test]
     fn test_function_definition() {
-        let code = "(defn hi [name] (+ 1 1))".to_string();
+        let code = "(defn add [x y] (+ x y))".to_string();
         let tokens = tokenise(code);
         assert_eq!(
             tokens.data,
             vec![
-                Token::LeftRoundBracket,
                 Token::FunctionDefinition,
-                Token::Symbol("hi".to_string()),
+                Token::Symbol("add".to_string()),
                 Token::LeftSquareBracket,
-                Token::Symbol("name".to_string()),
+                Token::Symbol("x".to_string()),
+                Token::Symbol("y".to_string()),
                 Token::RightSquareBracket,
                 Token::LeftRoundBracket,
                 Token::Symbol("+".to_string()),
-                Token::Integer(1),
-                Token::Integer(1),
-                Token::RightRoundBracket,
+                Token::Symbol("x".to_string()),
+                Token::Symbol("y".to_string()),
                 Token::RightRoundBracket,
             ]
         )

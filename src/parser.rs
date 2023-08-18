@@ -37,7 +37,12 @@ impl Parser {
     }
 
     pub fn parse(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
-        let nodes = self.parse_expression(tokens)?;
+        let nodes: Node;
+        if tokens.data[0] == Token::FunctionDefinition {
+            nodes = self.parse_function_definition(tokens)?;
+        } else {
+            nodes = self.parse_expression(tokens)?;
+        }
 
         if tokens.is_empty() {
             Ok(nodes)
@@ -101,6 +106,8 @@ impl Parser {
                 }
 
                 Token::DocString(s) => nodes.push(Node::DocString(s)),
+
+                Token::FunctionDefinition => continue,
 
                 _ => {
                     return Err(ParseError::TokenError(TokenError {
@@ -244,7 +251,7 @@ impl Parser {
                     continue;
                 }
 
-                Token::FunctionDefinition => nodes.push(self.parse_function_definition(tokens)?),
+                Token::FunctionDefinition => continue,
 
                 _ => {
                     return Err(ParseError::TokenError(TokenError {
@@ -344,7 +351,7 @@ mod tests {
             Ok(list) => {
                 assert_eq!(
                     list,
-                    Node::Expression(vec![Node::FunctionDefinition(vec![
+                    Node::FunctionDefinition(vec![
                         Node::Symbol("hi".to_string()),
                         Node::Parameter(vec![Node::Symbol("name".to_string()),]),
                         Node::DocString("lmao".to_string()),
@@ -353,7 +360,37 @@ mod tests {
                             Node::Integer(1),
                             Node::Integer(1)
                         ])
-                    ])])
+                    ])
+                );
+            }
+
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    }
+
+    #[test]
+    fn test_function_add() {
+        let code = "(defn add [x y] (+ x y))".to_string();
+        let mut tokens = tokenise(code);
+        let mut program = Parser::new();
+        match program.parse(&mut tokens) {
+            Ok(list) => {
+                assert_eq!(
+                    list,
+                    Node::FunctionDefinition(vec![
+                        Node::Symbol("add".to_string()),
+                        Node::Parameter(vec![
+                            Node::Symbol("x".to_string()),
+                            Node::Symbol("y".to_string()),
+                        ]),
+                        Node::Expression(vec![
+                            Node::Symbol("+".to_string()),
+                            Node::Symbol("x".to_string()),
+                            Node::Symbol("y".to_string()),
+                        ])
+                    ])
                 );
             }
 
