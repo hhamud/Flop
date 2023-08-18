@@ -10,10 +10,9 @@ pub enum Token {
     LeftSquareBracket,
     RightSquareBracket,
     FunctionDefinition,
-    //FunctionDefinition(String, Vec<String>, Option<DocString>, Body),
     Body,
     Comment,
-    DocString,
+    DocString(String),
     EOF,
 }
 
@@ -71,6 +70,7 @@ pub fn tokenise(code: String) -> Stack {
             "[" => stack.push(Token::LeftSquareBracket),
             "]" => stack.push(Token::RightSquareBracket),
             "defn" => stack.push(Token::FunctionDefinition),
+            //"""" => stack.push(Token::DocString(s))
             _ => {
                 let i = word.parse::<i64>();
                 if i.is_ok() {
@@ -80,7 +80,6 @@ pub fn tokenise(code: String) -> Stack {
                 }
             }
         }
-
     }
 
     stack
@@ -123,7 +122,6 @@ mod tests {
             ]
         )
     }
-
 
     #[test]
     fn test_function_definition() {
