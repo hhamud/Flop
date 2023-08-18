@@ -14,8 +14,6 @@ pub enum Node {
     DocString(String),
 }
 
-
-
 #[derive(Debug)]
 pub struct TokenError {
     message: &'static str,
@@ -106,8 +104,8 @@ impl Program {
 
                 _ => {
                     return Err(ParseError::TokenError(TokenError {
-                    message: "Function Definition: Unexpected token",
-                    token: token,
+                        message: "Function Definition: Unexpected token",
+                        token: token,
                     }));
                 }
             }
@@ -339,21 +337,22 @@ mod tests {
 
     #[test]
     fn test_function_definition() {
-        let code = "(defn hi [name] \"lmao\" (+ 1 1))".to_string();
+        let code = r#"(defn hi [name] "lmao" (+ 1 1))"#.to_string();
         let mut tokens = tokenise(code);
         let mut program = Program::new();
         match program.parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(
                     list,
-                    Node::Expression(vec![
-                        Node::FunctionDefinition(vec![
+                    Node::Expression(vec![Node::FunctionDefinition(vec![
                         Node::Symbol("hi".to_string()),
-                        Node::Parameter(vec![
-                            Node::Symbol("name".to_string()),
-                        ]),
+                        Node::Parameter(vec![Node::Symbol("name".to_string()),]),
                         Node::DocString("lmao".to_string()),
-                        Node::Expression(vec![Node::Symbol("+".to_string()),Node::Integer(1), Node::Integer(1)])
+                        Node::Expression(vec![
+                            Node::Symbol("+".to_string()),
+                            Node::Integer(1),
+                            Node::Integer(1)
+                        ])
                     ])])
                 );
             }
