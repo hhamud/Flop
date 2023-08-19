@@ -12,6 +12,8 @@ pub enum Node {
     FunctionDefinition(Vec<Node>),
     Parameter(Vec<Node>),
     DocString(String),
+    Variable(Box<Node>, Box<Node>),
+    StringLiteral(String),
 }
 
 #[derive(Debug)]
@@ -40,6 +42,8 @@ impl Parser {
         let nodes: Node;
         if tokens.data[0] == Token::FunctionDefinition {
             nodes = self.parse_function_definition(tokens)?;
+        } else if tokens.data[0] == Token::VariableDefinition {
+            nodes = self.parse_variables(tokens)?;
         } else {
             nodes = self.parse_expression(tokens)?;
         }
@@ -51,6 +55,37 @@ impl Parser {
         }
     }
 
+    pub fn parse_variables(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
+        // Expecting a variable name after `setq`
+
+        let var = tokens.pop_front();
+
+        let var_name = match tokens.pop_front() {
+            Some(Token::Symbol(s)) => Node::Symbol(s),
+            _ => {
+                return Err(ParseError::TokenError(TokenError {
+                    message: "Variable Definition: Expected a variable name",
+                    token: Token::EOF,
+                }))
+            }
+        };
+
+        // Expecting a value for the variable
+        let value = match tokens.pop_front() {
+            Some(Token::Integer(v)) => Node::Integer(v),
+            Some(Token::Bool(b)) => Node::Bool(b),
+            Some(Token::StringLiteral(s)) => Node::StringLiteral(s),
+            _ => {
+                return Err(ParseError::TokenError(TokenError {
+                    message: "Variable assignment: Expected a variable value",
+                    token: Token::EOF,
+                }))
+            }
+        };
+
+        Ok(Node::Variable(Box::new(var_name), Box::new(value)))
+    }
+
     pub fn parse_function_definition(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
         // (defn hi [name] "lmao" (print "hi" name))
         let mut nodes: Vec<Node> = Vec::new();
@@ -59,6 +94,11 @@ impl Parser {
 
         while let Some(token) = tokens.pop_front() {
             match token {
+                //(setq hi "lmao")
+                Token::VariableDefinition => {
+                    nodes.push(self.parse_variables(tokens)?);
+                }
+
                 Token::Symbol(s) => {
                     nodes.push(Node::Symbol(s));
                 }
@@ -215,6 +255,9 @@ impl Parser {
 
         while let Some(token) = tokens.pop_front() {
             match token {
+                Token::VariableDefinition => {
+                    nodes.push(self.parse_variables(tokens)?);
+                }
                 Token::LeftRoundBracket => {
                     // counter exists to count the expression brackets, both left and right
                     counter += 1;
@@ -391,6 +434,28 @@ mod tests {
                             Node::Symbol("y".to_string()),
                         ])
                     ])
+                );
+            }
+
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    }
+
+    #[test]
+    fn test_variable() {
+        let code = r#"(setq v "hi")"#.to_string();
+        let mut tokens = tokenise(code);
+        let mut program = Parser::new();
+        match program.parse(&mut tokens) {
+            Ok(list) => {
+                assert_eq!(
+                    list,
+                    Node::Variable(
+                        Box::new(Node::Symbol("v".to_string())),
+                        Box::new(Node::StringLiteral("hi".to_string()))
+                    )
                 );
             }
 

@@ -1,4 +1,3 @@
-#![feature(peeking_next)]
 use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq)]
@@ -12,6 +11,7 @@ pub enum Token {
     LeftSquareBracket,
     RightSquareBracket,
     FunctionDefinition,
+    VariableDefinition,
     Body,
     Comment,
     DocString(String),
@@ -73,6 +73,13 @@ pub fn tokenise(code: String) -> Stack {
 
                 if next_chars_string == "(defn" {
                     stack.push(Token::FunctionDefinition);
+                    for _ in 0..5 {
+                        chars.next();
+                    }
+                    after_function_parameters = false;
+                    skip_next_closing_paren = true;
+                } else if next_chars_string == "(setq" {
+                    stack.push(Token::VariableDefinition);
                     for _ in 0..5 {
                         chars.next();
                     }
@@ -197,6 +204,20 @@ mod tests {
                 Token::Symbol("print".to_string()),
                 Token::StringLiteral("hi".to_string()),
                 Token::RightRoundBracket,
+            ]
+        )
+    }
+
+    #[test]
+    fn test_variable() {
+        let code = r#"(setq lmao "hi")"#.to_string();
+        let tokens = tokenise(code);
+        assert_eq!(
+            tokens.data,
+            vec![
+                Token::VariableDefinition,
+                Token::Symbol("lmao".to_string()),
+                Token::StringLiteral("hi".to_string()),
             ]
         )
     }

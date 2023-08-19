@@ -22,6 +22,7 @@ impl Environment {
     pub fn new() -> Self {
         Self {
             functions: HashMap::new(),
+            variables: HashMap::new(),
         }
     }
 }
@@ -92,6 +93,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
 
                     let mut local_env = Environment {
                         functions: env.functions.clone(),
+                        variables: HashMap::new(),
                     };
 
                     // binding of parameter with body args
