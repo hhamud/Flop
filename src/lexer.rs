@@ -127,7 +127,8 @@ pub fn tokenise(code: String) -> Stack {
                 chars.next();
 
                 while let Some(&next_char) = chars.peek() {
-                    if next_char.is_whitespace() || ['(', ')', '[', ']', '\"'].contains(&next_char) {
+                    if next_char.is_whitespace() || ['(', ')', '[', ']', '\"'].contains(&next_char)
+                    {
                         break;
                     }
                     word.push(chars.next().unwrap());
@@ -145,7 +146,6 @@ pub fn tokenise(code: String) -> Stack {
 
     stack
 }
-
 
 #[cfg(test)]
 mod tests {

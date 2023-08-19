@@ -15,6 +15,7 @@ pub enum EvalResult {
 #[derive(Debug)]
 pub struct Environment {
     functions: HashMap<String, Rc<FunctionDefinition>>,
+    variables: HashMap<String, Rc<Variable>>,
 }
 
 impl Environment {
@@ -31,6 +32,12 @@ pub struct FunctionDefinition {
     parameters: Vec<String>,
     docstrings: Option<String>,
     body: Node,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variable {
+    name: String,
+    assignment: Node,
 }
 
 pub fn operation(
@@ -87,6 +94,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                         functions: env.functions.clone(),
                     };
 
+                    // binding of parameter with body args
                     for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
                         local_env.functions.insert(
                             param.clone(),
@@ -194,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn nested_add_function() {
+    fn add_function_definition() {
         let code = r#"(defn add [x y] "info" (+ x y))"#.to_string();
         let mut tokens = tokenise(code);
         let mut parser = Parser::new();
@@ -224,6 +232,38 @@ mod tests {
             Err(e) => {
                 panic!("{:?}", e)
             }
+        }
+    }
+    #[test]
+    fn function_call() {
+        // Define and call the add function
+        let function_def = r#"
+        (defn add [x y] "adding lmao" (+ x y))
+    "#
+        .to_string();
+
+        let mut tokens = tokenise(function_def);
+        let mut parser = Parser::new();
+        let ast = parser.parse(&mut tokens).unwrap();
+
+        let mut env = Environment::new();
+
+        evaluate(&ast, &mut env).unwrap();
+
+        // check if add has been defined
+        assert!(env.functions.contains_key("add"));
+
+        // call add function
+        let function_call = r#"(add 2 3)"#.to_string();
+        let mut tokens = tokenise(function_call);
+
+        let func_ast = parser.parse(&mut tokens).unwrap();
+        let result = evaluate(&func_ast, &mut env);
+
+        // Check the result
+        match result {
+            Ok(EvalResult::Integer(n)) => assert_eq!(n, 5),
+            _ => panic!("Expected integer result of 5"),
         }
     }
 }
