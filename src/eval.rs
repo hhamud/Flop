@@ -11,7 +11,6 @@ pub enum EvalResult {
     StringLiteral(String),
     Bool(bool),
     List(Vec<EvalResult>),
-    Function(Rc<FunctionDefinition>),
 }
 
 #[derive(Debug)]
@@ -77,7 +76,6 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
         Node::Symbol(s) => {
             if let Some(var) = env.variables.get(s) {
                 let assignment_clone = var.assignment.clone();
-                println!("{:?}", assignment_clone);
                 Ok(evaluate(&assignment_clone, env)?)
             } else {
                 Err(format!("Undefined symbol: {}", s))
@@ -117,11 +115,9 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
             // variable checking
             if nodes.len() == 1 {
                 let node = &nodes.clone().pop().unwrap();
-                println!("{:?}", node);
                 Ok(evaluate(node, env)?)
             } else if let Node::Symbol(name) = &nodes[0] {
                 // function checking
-                println!("nodes shown: {:?}", nodes);
 
                 if let Some(func_def) = env.functions.get(name) {
                     // check for correct number of args provided
@@ -139,9 +135,6 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
 
                     // binding of parameter with body args
                     for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
-                        println!("{:?}", param);
-                        println!("{:?}", arg);
-
                         local_env.variables.insert(
                             param.clone(),
                             Rc::new(Variable {
@@ -196,7 +189,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                 });
 
                 env.functions.insert(name.clone(), func_def.clone());
-                Ok(EvalResult::Function(func_def))
+                Ok(EvalResult::Void)
             } else {
                 Err("Expected function name".to_string())
             }
@@ -246,42 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn add_function_definition() {
-        let code = r#"(defn add [x y] "info" (+ x y))"#.to_string();
-        let mut tokens = tokenise(code);
-        let mut parser = Parser::new();
-        let ast = parser.parse(&mut tokens).unwrap();
-        let mut env = Environment::new();
-        let eval = evaluate(&ast, &mut env);
-        match eval {
-            Ok(EvalResult::Integer(_))
-            | Ok(EvalResult::Bool(_))
-            | Ok(EvalResult::List(_))
-            | Ok(EvalResult::Void) => {}
-            Ok(EvalResult::Function(n)) => {
-                assert_eq!(
-                    n,
-                    Rc::new(FunctionDefinition {
-                        name: "add".to_string(),
-                        parameters: vec!["x".to_string(), "y".to_string()],
-                        docstrings: Some("info".to_string()),
-                        body: Node::Expression(vec![
-                            Node::Symbol("+".to_string()),
-                            Node::Symbol("x".to_string()),
-                            Node::Symbol("y".to_string()),
-                        ])
-                    })
-                )
-            }
-
-            Err(e) => {
-                panic!("{:?}", e)
-            }
-        }
-    }
-    #[test]
     fn function_call() {
-        // Define and call the add function
         let function_def = r#"
         (defn add [x y] "adding lmao" (+ x y))
     "#

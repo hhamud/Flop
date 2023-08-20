@@ -12,8 +12,6 @@ pub enum Token {
     RightSquareBracket,
     FunctionDefinition,
     VariableDefinition,
-    Body,
-    Comment,
     DocString(String),
     EOF,
 }
@@ -200,7 +198,6 @@ mod tests {
             tokens.data,
             vec![
                 Token::LeftRoundBracket,
-                // change to function call later
                 Token::Symbol("print".to_string()),
                 Token::StringLiteral("hi".to_string()),
                 Token::RightRoundBracket,

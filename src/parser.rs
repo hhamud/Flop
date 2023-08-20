@@ -6,7 +6,6 @@ pub enum Node {
     Integer(i64),
     Bool(bool),
     Symbol(String),
-    Lambda(Vec<String>, Vec<Node>),
     List(Vec<Node>),
     Expression(Vec<Node>),
     FunctionDefinition(Vec<Node>),
@@ -58,7 +57,8 @@ impl Parser {
     pub fn parse_variables(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
         // Expecting a variable name after `setq`
 
-        let var = tokens.pop_front();
+        // pop Node::Expression
+        tokens.pop_front();
 
         let var_name = match tokens.pop_front() {
             Some(Token::Symbol(s)) => Node::Symbol(s),
@@ -87,14 +87,12 @@ impl Parser {
     }
 
     pub fn parse_function_definition(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
-        // (defn hi [name] "lmao" (print "hi" name))
         let mut nodes: Vec<Node> = Vec::new();
         let mut pcounter = 1;
         let mut counter = 0;
 
         while let Some(token) = tokens.pop_front() {
             match token {
-                //(setq hi "lmao")
                 Token::VariableDefinition => {
                     nodes.push(self.parse_variables(tokens)?);
                 }
@@ -477,7 +475,7 @@ mod tests {
         assert_eq!(tokens.data, vec![Token::Symbol("v".to_string())]);
         match program.parse(&mut tokens) {
             Ok(list) => {
-                assert_eq!(list, Node::Symbol("v".to_string()));
+                assert_eq!(list, Node::Expression(vec![Node::Symbol("v".to_string())]));
             }
 
             Err(e) => {

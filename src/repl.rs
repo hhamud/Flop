@@ -25,7 +25,6 @@ pub fn repl() {
             EvalResult::Integer(n) => println!("{:?}", n),
             EvalResult::StringLiteral(n) => println!("{:?}", n),
             EvalResult::List(n) => println!("{:?}", n),
-            EvalResult::Function(n) => println!("{:?}", n),
             EvalResult::Void => {}
             _ => panic!("failed to evaluate"),
         }
