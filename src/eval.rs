@@ -73,11 +73,9 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
+
         Node::Symbol(s) => {
-            if let Some(func) = env.functions.get(s) {
-                //TODO: implement function getter
-                Err("Function calls not yet supported!".to_string())
-            } else if let Some(var) = env.variables.get(s) {
+            if let Some(var) = env.variables.get(s) {
                 let assignment_clone = var.assignment.clone();
                 println!("{:?}", assignment_clone);
                 Ok(evaluate(&assignment_clone, env)?)
@@ -116,19 +114,24 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                 return Err("Empty Expression".to_string());
             }
 
+            // variable checking
             if nodes.len() == 1 {
                 let node = &nodes.clone().pop().unwrap();
                 println!("{:?}", node);
                 Ok(evaluate(node, env)?)
             } else if let Node::Symbol(name) = &nodes[0] {
+                // function checking
                 println!("nodes shown: {:?}", nodes);
-                // check for variable
 
                 if let Some(func_def) = env.functions.get(name) {
+                    // check for correct number of args provided
                     if nodes.len() - 1 != func_def.parameters.len() {
                         return Err("Incorrect number of arguements".to_string());
                     }
 
+                    // create a local scope for the function
+                    // clone the global env
+                    // execute within this env
                     let mut local_env = Environment {
                         functions: env.functions.clone(),
                         variables: HashMap::new(),
@@ -136,16 +139,19 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
 
                     // binding of parameter with body args
                     for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
-                        local_env.functions.insert(
+                        println!("{:?}", param);
+                        println!("{:?}", arg);
+
+                        local_env.variables.insert(
                             param.clone(),
-                            Rc::new(FunctionDefinition {
-                                name: String::new(),
-                                parameters: Vec::new(),
-                                docstrings: None,
-                                body: arg.clone(),
+                            Rc::new(Variable {
+                                name: param.clone(),
+                                assignment: arg.clone(),
                             }),
                         );
                     }
+
+                    // evaluate the function body with bounded args
                     evaluate(&func_def.body, &mut local_env)
                 } else {
                     operation(nodes, name.as_str(), env)
