@@ -270,6 +270,10 @@ impl Parser {
                 Token::Symbol(s) => {
                     nodes.push(Node::Symbol(s));
                 }
+
+                Token::StringLiteral(s) => {
+                    nodes.push(Node::StringLiteral(s));
+                }
                 Token::Integer(n) => {
                     nodes.push(Node::Integer(n));
                 }
@@ -457,6 +461,23 @@ mod tests {
                         Box::new(Node::StringLiteral("hi".to_string()))
                     )
                 );
+            }
+
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    }
+
+    #[test]
+    fn test_variable_call() {
+        let code = r#"v"#.to_string();
+        let mut tokens = tokenise(code);
+        let mut program = Parser::new();
+        assert_eq!(tokens.data, vec![Token::Symbol("v".to_string())]);
+        match program.parse(&mut tokens) {
+            Ok(list) => {
+                assert_eq!(list, Node::Symbol("v".to_string()));
             }
 
             Err(e) => {

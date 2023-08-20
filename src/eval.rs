@@ -6,7 +6,9 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum EvalResult {
+    Void,
     Integer(i64),
+    StringLiteral(String),
     Bool(bool),
     List(Vec<EvalResult>),
     Function(Rc<FunctionDefinition>),
@@ -70,7 +72,36 @@ pub fn operation(
 pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
-        Node::Symbol(s) => Err("Cannot evaluate a standalone symbol".to_string()),
+        Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
+        Node::Symbol(s) => {
+            if let Some(func) = env.functions.get(s) {
+                //TODO: implement function getter
+                Err("Function calls not yet supported!".to_string())
+            } else if let Some(var) = env.variables.get(s) {
+                let assignment_clone = var.assignment.clone();
+                println!("{:?}", assignment_clone);
+                Ok(evaluate(&assignment_clone, env)?)
+            } else {
+                Err(format!("Undefined symbol: {}", s))
+            }
+        }
+        Node::Variable(n, v) => {
+            // Dereference the boxed node to get the actual node
+            let name_node = &**n;
+            let assignment_node = &**v;
+
+            if let Node::Symbol(name_str) = name_node {
+                let var = Rc::new(Variable {
+                    name: name_str.clone(),
+                    assignment: assignment_node.clone(),
+                });
+                env.variables.insert(name_str.clone(), var);
+                Ok(EvalResult::Void)
+            } else {
+                Err("Expected a Symbol node for variable name".to_string())
+            }
+        }
+
         Node::Bool(b) => Ok(EvalResult::Bool(*b)),
         Node::List(l) => {
             let mut res = Vec::new();
@@ -85,7 +116,14 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                 return Err("Empty Expression".to_string());
             }
 
-            if let Node::Symbol(name) = &nodes[0] {
+            if nodes.len() == 1 {
+                let node = &nodes.clone().pop().unwrap();
+                println!("{:?}", node);
+                Ok(evaluate(node, env)?)
+            } else if let Node::Symbol(name) = &nodes[0] {
+                println!("nodes shown: {:?}", nodes);
+                // check for variable
+
                 if let Some(func_def) = env.functions.get(name) {
                     if nodes.len() - 1 != func_def.parameters.len() {
                         return Err("Incorrect number of arguements".to_string());
@@ -108,7 +146,6 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                             }),
                         );
                     }
-
                     evaluate(&func_def.body, &mut local_env)
                 } else {
                     operation(nodes, name.as_str(), env)
@@ -144,7 +181,6 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                     docstrings = Some(name.to_string());
                 }
 
-                println!("{:?}", nodes);
                 let body = nodes[3].clone();
                 let func_def = Rc::new(FunctionDefinition {
                     name: name.to_string(),
@@ -212,9 +248,10 @@ mod tests {
         let mut env = Environment::new();
         let eval = evaluate(&ast, &mut env);
         match eval {
-            Ok(EvalResult::Integer(_)) | Ok(EvalResult::Bool(_)) | Ok(EvalResult::List(_)) => {
-                todo!()
-            }
+            Ok(EvalResult::Integer(_))
+            | Ok(EvalResult::Bool(_))
+            | Ok(EvalResult::List(_))
+            | Ok(EvalResult::Void) => {}
             Ok(EvalResult::Function(n)) => {
                 assert_eq!(
                     n,
