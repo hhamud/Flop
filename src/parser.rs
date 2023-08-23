@@ -57,17 +57,21 @@ impl Parser {
         // pop Node::Expression
         let _exp = tokens.pop_front();
 
-        let var_name = match tokens.pop_front() {
+        let var_token = tokens.pop_front();
+
+        let var_name = match var_token {
             Some(Token::Symbol(s)) => Node::Symbol(s),
             _ => {
                 return Err(ParseError::TokenError(TokenError {
                     message: "Variable Definition: Expected a variable name",
-                    token: Token::EOF,
+                    token: var_token.unwrap_or(Token::EOF),
                 }))
             }
         };
 
-        let value = match tokens.pop_front() {
+        let value_token = tokens.pop_front();
+
+        let value = match value_token {
             Some(Token::Integer(v)) => Node::Integer(v),
             Some(Token::Bool(b)) => Node::Bool(b),
             Some(Token::StringLiteral(s)) => Node::StringLiteral(s),
@@ -75,7 +79,7 @@ impl Parser {
             _ => {
                 return Err(ParseError::TokenError(TokenError {
                     message: "Variable assignment: Expected a variable value",
-                    token: Token::EOF,
+                    token: value_token.unwrap_or(Token::EOF),
                 }))
             }
         };
