@@ -38,14 +38,11 @@ impl Parser {
     }
 
     pub fn parse(&mut self, tokens: &mut Stack) -> Result<Node, ParseError> {
-        let nodes: Node;
-        if tokens.data[0] == Token::FunctionDefinition {
-            nodes = self.parse_function_definition(tokens)?;
-        } else if tokens.data[0] == Token::VariableDefinition {
-            nodes = self.parse_variables(tokens)?;
-        } else {
-            nodes = self.parse_expression(tokens)?;
-        }
+        let nodes = match tokens.data[0] {
+            Token::FunctionDefinition => self.parse_function_definition(tokens)?,
+            Token::VariableDefinition => self.parse_variables(tokens)?,
+            _ => self.parse_expression(tokens)?,
+        };
 
         if tokens.is_empty() {
             Ok(nodes)
@@ -58,7 +55,7 @@ impl Parser {
         // Expecting a variable name after `setq`
 
         // pop Node::Expression
-        tokens.pop_front();
+        let _exp = tokens.pop_front();
 
         let var_name = match tokens.pop_front() {
             Some(Token::Symbol(s)) => Node::Symbol(s),
@@ -70,11 +67,11 @@ impl Parser {
             }
         };
 
-        // Expecting a value for the variable
         let value = match tokens.pop_front() {
             Some(Token::Integer(v)) => Node::Integer(v),
             Some(Token::Bool(b)) => Node::Bool(b),
             Some(Token::StringLiteral(s)) => Node::StringLiteral(s),
+            Some(Token::LeftRoundBracket) => self.parse_expression(tokens)?,
             _ => {
                 return Err(ParseError::TokenError(TokenError {
                     message: "Variable assignment: Expected a variable value",

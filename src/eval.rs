@@ -1,3 +1,4 @@
+use crate::ast::{FunctionDefinition, Variable};
 use crate::helpers::eval_test;
 use crate::lexer::tokenise;
 use crate::parser::{Node, Parser};
@@ -26,20 +27,6 @@ impl Environment {
             variables: HashMap::new(),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FunctionDefinition {
-    name: String,
-    parameters: Vec<String>,
-    docstrings: Option<String>,
-    body: Node,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Variable {
-    name: String,
-    assignment: Node,
 }
 
 pub fn operation(
@@ -127,10 +114,11 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
 
                     // create a local scope for the function
                     // clone the global env
+                    // copy any variables
                     // execute within this env
                     let mut local_env = Environment {
                         functions: env.functions.clone(),
-                        variables: HashMap::new(),
+                        variables: env.variables.clone(),
                     };
 
                     // binding of parameter with body args
