@@ -33,7 +33,10 @@ fn peek_for_keywords(chars: &mut std::iter::Peekable<std::str::Chars>) -> Option
     None
 }
 
-fn extract_string_content(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
+fn extract_string_content(
+    chars: &mut std::iter::Peekable<std::str::Chars>,
+    stack: &Stack<Token>,
+) -> Token {
     // check for docstrings
     let mut res = String::new();
     chars.next(); // skip the opening quote
@@ -43,7 +46,12 @@ fn extract_string_content(chars: &mut std::iter::Peekable<std::str::Chars>) -> T
         }
         res.push(inner_ch);
     }
-    Token::StringLiteral(res)
+
+    if *stack.last().unwrap() != Token::RightSquareBracket {
+        Token::StringLiteral(res)
+    } else {
+        Token::DocString(res)
+    }
 }
 
 fn extract_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> String {
@@ -96,7 +104,7 @@ pub fn tokenise(code: String) -> Stack<Token> {
                 chars.next();
             }
             '\"' => {
-                let string_content = extract_string_content(&mut chars);
+                let string_content = extract_string_content(&mut chars, &stack);
                 stack.push(string_content);
             }
             ch if ch.is_whitespace() => {
