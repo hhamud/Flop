@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use crate::stack::Stack;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -13,90 +13,79 @@ pub enum Token {
     FunctionDefinition,
     VariableDefinition,
     DocString(String),
-    EOF,
+    Eof,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Stack {
-    pub data: VecDeque<Token>,
-}
+const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
 
-impl Stack {
-    pub fn new() -> Self {
-        Self {
-            data: Vec::new().into(),
+const KEYWORDS: [&str; 2] = ["defn", "setq"];
+
+fn peek_for_keywords(chars: &mut std::iter::Peekable<std::str::Chars>) -> Option<&'static str> {
+    for &keyword in &KEYWORDS {
+        let next_chars: String = chars.clone().take(keyword.len() + 1).collect();
+        if &next_chars[1..] == keyword {
+            for _ in 0..=keyword.len() {
+                chars.next();
+            }
+            return Some(keyword);
         }
     }
-
-    pub fn push(&mut self, token: Token) {
-        self.data.push_back(token);
-    }
-
-    pub fn pop(&mut self) -> Option<Token> {
-        self.data.pop_back()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-
-    pub fn last(&self) -> Option<&Token> {
-        self.data.back()
-    }
-
-    pub fn pop_front(&mut self) -> Option<Token> {
-        self.data.pop_front()
-    }
+    None
 }
 
-pub fn tokenise(code: String) -> Stack {
+fn extract_string_content(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
+    // check for docstrings
+    let mut res = String::new();
+    chars.next(); // skip the opening quote
+    for inner_ch in chars.by_ref() {
+        if inner_ch == '\"' {
+            break;
+        }
+        res.push(inner_ch);
+    }
+    Token::StringLiteral(res)
+}
+
+fn extract_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> String {
+    let mut word = String::new();
+    while let Some(&next_char) = chars.peek() {
+        if next_char.is_whitespace() || SPECIAL_CHARS.contains(&next_char) {
+            break;
+        }
+        word.push(chars.next().unwrap());
+    }
+    word
+}
+
+pub fn tokenise(code: String) -> Stack<Token> {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
-    let mut after_function_parameters = false;
-    let mut skip_next_closing_paren = false;
+    // keep track of right and left brace pairs
+    let mut counter = 0;
 
     while let Some(&ch) = chars.peek() {
         match ch {
             '(' => {
-                let mut next_chars = Vec::new();
-                let mut next_chars_iter = chars.clone();
-                for _ in 0..5 {
-                    if let Some(&c) = next_chars_iter.peek() {
-                        next_chars.push(c);
-                        next_chars_iter.next();
+                if let Some(keyword) = peek_for_keywords(&mut chars) {
+                    match keyword {
+                        "defn" => stack.push(Token::FunctionDefinition),
+                        "setq" => stack.push(Token::VariableDefinition),
+                        _ => unreachable!(),
                     }
-                }
-
-                let next_chars_string: String = next_chars.into_iter().collect();
-
-                if next_chars_string == "(defn" {
-                    stack.push(Token::FunctionDefinition);
-                    for _ in 0..5 {
-                        chars.next();
-                    }
-                    after_function_parameters = false;
-                    skip_next_closing_paren = true;
-                } else if next_chars_string == "(setq" {
-                    stack.push(Token::VariableDefinition);
-                    for _ in 0..5 {
-                        chars.next();
-                    }
-                    after_function_parameters = false;
-                    skip_next_closing_paren = true;
                 } else {
+                    counter += 1;
                     stack.push(Token::LeftRoundBracket);
                     chars.next();
-                    after_function_parameters = false;
                 }
             }
             ')' => {
-                if skip_next_closing_paren {
-                    skip_next_closing_paren = false;
-                } else {
+                if counter >= 1 {
+                    counter -= 1;
                     stack.push(Token::RightRoundBracket);
+                    chars.next();
+                } else {
+                    chars.next();
                 }
-                chars.next();
-                after_function_parameters = false;
             }
             '[' => {
                 stack.push(Token::LeftSquareBracket);
@@ -105,46 +94,21 @@ pub fn tokenise(code: String) -> Stack {
             ']' => {
                 stack.push(Token::RightSquareBracket);
                 chars.next();
-                after_function_parameters = true;
             }
             '\"' => {
-                let mut res = String::new();
-                chars.next();
-                while let Some(inner_ch) = chars.next() {
-                    if inner_ch == '\"' {
-                        break;
-                    }
-                    res.push(inner_ch);
-                }
-                if after_function_parameters {
-                    stack.push(Token::DocString(res));
-                } else {
-                    stack.push(Token::StringLiteral(res));
-                }
-                after_function_parameters = false;
+                let string_content = extract_string_content(&mut chars);
+                stack.push(string_content);
             }
             ch if ch.is_whitespace() => {
                 chars.next();
-                continue;
             }
             _ => {
-                let mut word = ch.to_string();
-                chars.next();
-
-                while let Some(&next_char) = chars.peek() {
-                    if next_char.is_whitespace() || ['(', ')', '[', ']', '\"'].contains(&next_char)
-                    {
-                        break;
-                    }
-                    word.push(chars.next().unwrap());
-                }
-
+                let word = extract_word(&mut chars);
                 if let Ok(i) = word.parse::<i64>() {
                     stack.push(Token::Integer(i));
                 } else {
                     stack.push(Token::Symbol(word));
                 }
-                after_function_parameters = false;
             }
         }
     }

@@ -1,7 +1,5 @@
 use crate::ast::{FunctionDefinition, Variable};
-use crate::helpers::eval_test;
-use crate::lexer::tokenise;
-use crate::parser::{Node, Parser};
+use crate::parser::Node;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -29,11 +27,7 @@ impl Environment {
     }
 }
 
-pub fn operation(
-    ast: &Vec<Node>,
-    symbol: &str,
-    env: &mut Environment,
-) -> Result<EvalResult, String> {
+pub fn operation(ast: &[Node], symbol: &str, env: &mut Environment) -> Result<EvalResult, String> {
     let mut oper: i64 = match evaluate(&ast[1], env)? {
         EvalResult::Integer(n) => n,
         _ => return Err("Expected integer operand".to_string()),
@@ -89,7 +83,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
         Node::List(l) => {
             let mut res = Vec::new();
             for list in l {
-                res.push(evaluate(&list, env)?)
+                res.push(evaluate(list, env)?)
             }
 
             Ok(EvalResult::List(res))
@@ -176,7 +170,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
                     body,
                 });
 
-                env.functions.insert(name.clone(), func_def.clone());
+                env.functions.insert(name.clone(), func_def);
                 Ok(EvalResult::Void)
             } else {
                 Err("Expected function name".to_string())
@@ -190,6 +184,9 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::helpers::eval_test;
+    use crate::lexer::tokenise;
+    use crate::parser::parse;
 
     #[test]
     fn add() {
@@ -234,8 +231,7 @@ mod tests {
         .to_string();
 
         let mut tokens = tokenise(function_def);
-        let mut parser = Parser::new();
-        let ast = parser.parse(&mut tokens).unwrap();
+        let ast = parse(&mut tokens).unwrap();
 
         let mut env = Environment::new();
 
@@ -248,7 +244,7 @@ mod tests {
         let function_call = r#"(add 2 3)"#.to_string();
         let mut tokens = tokenise(function_call);
 
-        let func_ast = parser.parse(&mut tokens).unwrap();
+        let func_ast = parse(&mut tokens).unwrap();
         let result = evaluate(&func_ast, &mut env);
 
         // Check the result

@@ -1,10 +1,14 @@
+#![allow(dead_code)]
+
 mod ast;
+mod error;
 mod eval;
 mod file;
 mod helpers;
 mod lexer;
 mod parser;
 mod repl;
+mod stack;
 
 use crate::file::read_file;
 use crate::repl::repl;
