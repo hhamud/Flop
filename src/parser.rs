@@ -31,8 +31,6 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     }
 }
 
-// stack<Node>
-
 fn parse_variables(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     // Expecting a variable name after `setq`
 

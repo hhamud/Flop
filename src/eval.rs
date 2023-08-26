@@ -1,6 +1,7 @@
 use crate::ast::{FunctionDefinition, Variable};
 use crate::parser::Node;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -27,157 +28,210 @@ impl Environment {
     }
 }
 
-pub fn operation(ast: &[Node], symbol: &str, env: &mut Environment) -> Result<EvalResult, String> {
+fn operation(
+    ast: &[Node],
+    symbol: &str,
+    env: &mut Environment,
+) -> Result<EvalResult, &'static str> {
     let mut oper: i64 = match evaluate(&ast[1], env)? {
         EvalResult::Integer(n) => n,
-        _ => return Err("Expected integer operand".to_string()),
+        _ => return Err("Expected integer operand"),
     };
 
     for operand in &ast[2..] {
         let oper_val = match evaluate(operand, env)? {
             EvalResult::Integer(n) => n,
-            _ => return Err("Expected integer operand".to_string()),
+            _ => return Err("Expected integer operand"),
         };
+
         match symbol {
             "+" => oper += oper_val,
             "-" => oper -= oper_val,
             "/" => oper /= oper_val,
             "*" => oper *= oper_val,
-            _ => return Err(format!("Unsupported operation: {}", symbol)),
+            _ => return Err("Unsupported math Operation"),
         }
     }
     Ok(EvalResult::Integer(oper))
 }
 
-pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, String> {
+fn binary_expression(
+    ast: &[Node],
+    symbol: &str,
+    env: &mut Environment,
+) -> Result<EvalResult, &'static str> {
+    if ast.len() < 3 {
+        return Err("Insufficient operands");
+    }
+
+    let mut oper = match evaluate(&ast[1], env)? {
+        EvalResult::Integer(n) => n,
+        _ => return Err("Expected integer operand"),
+    };
+
+    for operand in &ast[2..] {
+        let operand_val = match evaluate(operand, env)? {
+            EvalResult::Integer(n) => n,
+            _ => return Err("Expected integer operand"),
+        };
+
+        match symbol {
+            "=" => oper = (oper == operand_val) as i64,
+            ">" => oper = (oper > operand_val) as i64,
+            ">=" => oper = (oper >= operand_val) as i64,
+            "<" => oper = (oper < operand_val) as i64,
+            "<=" => oper = (oper <= operand_val) as i64,
+            _ => return Err("Unsupported binary operation: {}"),
+        }
+
+        // Short-circuit if the result is already false
+        if symbol != "=" && oper == 0 {
+            return Ok(EvalResult::Bool(false));
+        }
+    }
+
+    Ok(EvalResult::Bool(oper != 0))
+}
+
+fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, &'static str> {
+    match env.variables.get(symbol) {
+        Some(variable) => Ok(evaluate(&variable.assignment.clone(), env)?),
+        _ => Err("Undefined symbol: {}"),
+    }
+}
+
+fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, &'static str> {
+    let mut res = Vec::new();
+    for item in list {
+        res.push(evaluate(item, env)?)
+    }
+
+    Ok(EvalResult::List(res))
+}
+
+fn insert_variable(
+    variable: (&Box<Node>, &Box<Node>),
+    env: &mut Environment,
+) -> Result<EvalResult, &'static str> {
+    // Dereference the boxed node to get the actual node
+    let (name_node, assignment_node) = (variable.0.deref(), variable.1.deref());
+
+    if let Node::Symbol(name_str) = name_node {
+        let var = Rc::new(Variable {
+            name: name_str.clone(),
+            assignment: assignment_node.clone(),
+        });
+        env.variables.insert(name_str.clone(), var);
+        Ok(EvalResult::Void)
+    } else {
+        Err("Expected a Symbol node for variable name")
+    }
+}
+
+fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResult, &'static str> {
+    if nodes.is_empty() {
+        return Err("Empty Expression");
+    }
+
+    if nodes.len() >= 2 {
+        if let Node::Symbol(symbol) = &nodes[0] {
+            if ["=", ">", ">=", "<", "<="].contains(&symbol.as_str()) {
+                return binary_expression(&nodes, symbol, env);
+            }
+        }
+    }
+
+    if let Node::Symbol(name) = &nodes[0] {
+        if let Some(func_def) = env.functions.get(name) {
+            if nodes.len() - 1 != func_def.parameters.len() {
+                return Err("Incorrect number of arguments");
+            }
+
+            let mut local_env = Environment {
+                functions: env.functions.clone(),
+                variables: env.variables.clone(),
+            };
+
+            for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
+                local_env.variables.insert(
+                    param.clone(),
+                    Rc::new(Variable {
+                        name: param.clone(),
+                        assignment: arg.clone(),
+                    }),
+                );
+            }
+
+            return evaluate(&func_def.body, &mut local_env);
+        } else {
+            return operation(nodes, name.as_str(), env);
+        }
+    }
+
+    if nodes.len() == 1 {
+        let node = nodes.last().unwrap();
+        return Ok(evaluate(node, env)?);
+    }
+
+    Err("Expected function name, operator, or expression")
+}
+
+fn insert_function_definition(
+    nodes: &[Node],
+    env: &mut Environment,
+) -> Result<EvalResult, &'static str> {
+    if nodes.len() < 3 {
+        return Err("Incomplete function definition");
+    }
+
+    if let Node::Symbol(name) = &nodes[0] {
+        let parameters = if let Node::Parameter(params) = &nodes[1] {
+            params
+                .iter()
+                .filter_map(|param| {
+                    if let Node::Symbol(s) = param {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        } else {
+            return Err("Expected parameter list");
+        };
+
+        let mut docstrings: Option<String> = None;
+
+        if let Node::DocString(name) = &nodes[2] {
+            docstrings = Some(name.to_string());
+        }
+
+        let body = nodes[3].clone();
+        let func_def = Rc::new(FunctionDefinition {
+            name: name.to_string(),
+            parameters,
+            docstrings,
+            body,
+        });
+
+        env.functions.insert(name.clone(), func_def);
+        Ok(EvalResult::Void)
+    } else {
+        Err("Expected function name")
+    }
+}
+
+pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, &'static str> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
-
-        Node::Symbol(s) => {
-            if let Some(var) = env.variables.get(s) {
-                let assignment_clone = var.assignment.clone();
-                Ok(evaluate(&assignment_clone, env)?)
-            } else {
-                Err(format!("Undefined symbol: {}", s))
-            }
-        }
-        Node::Variable(n, v) => {
-            // Dereference the boxed node to get the actual node
-            let name_node = &**n;
-            let assignment_node = &**v;
-
-            if let Node::Symbol(name_str) = name_node {
-                let var = Rc::new(Variable {
-                    name: name_str.clone(),
-                    assignment: assignment_node.clone(),
-                });
-                env.variables.insert(name_str.clone(), var);
-                Ok(EvalResult::Void)
-            } else {
-                Err("Expected a Symbol node for variable name".to_string())
-            }
-        }
-
+        Node::Symbol(s) => Ok(evaluate_variable(s, env)?),
+        Node::Variable(n, v) => Ok(insert_variable((n, v), env)?),
         Node::Bool(b) => Ok(EvalResult::Bool(*b)),
-        Node::List(l) => {
-            let mut res = Vec::new();
-            for list in l {
-                res.push(evaluate(list, env)?)
-            }
-
-            Ok(EvalResult::List(res))
-        }
-        Node::Expression(nodes) => {
-            if nodes.is_empty() {
-                return Err("Empty Expression".to_string());
-            }
-
-            // variable checking
-            if nodes.len() == 1 {
-                let node = &nodes.clone().pop().unwrap();
-                Ok(evaluate(node, env)?)
-            } else if let Node::Symbol(name) = &nodes[0] {
-                // function checking
-
-                if let Some(func_def) = env.functions.get(name) {
-                    // check for correct number of args provided
-                    if nodes.len() - 1 != func_def.parameters.len() {
-                        return Err("Incorrect number of arguements".to_string());
-                    }
-
-                    // create a local scope for the function
-                    // clone the global env
-                    // copy any variables
-                    // execute within this env
-                    let mut local_env = Environment {
-                        functions: env.functions.clone(),
-                        variables: env.variables.clone(),
-                    };
-
-                    // binding of parameter with body args
-                    for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
-                        local_env.variables.insert(
-                            param.clone(),
-                            Rc::new(Variable {
-                                name: param.clone(),
-                                assignment: arg.clone(),
-                            }),
-                        );
-                    }
-
-                    // evaluate the function body with bounded args
-                    evaluate(&func_def.body, &mut local_env)
-                } else {
-                    operation(nodes, name.as_str(), env)
-                }
-            } else {
-                Err("Expected function name or operator".to_string())
-            }
-        }
-        Node::FunctionDefinition(nodes) => {
-            if nodes.len() < 3 {
-                return Err("Incomplete function definition".to_string());
-            }
-
-            if let Node::Symbol(name) = &nodes[0] {
-                let parameters = if let Node::Parameter(params) = &nodes[1] {
-                    params
-                        .iter()
-                        .filter_map(|param| {
-                            if let Node::Symbol(s) = param {
-                                Some(s.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                } else {
-                    return Err("Expected parameter list".to_string());
-                };
-
-                let mut docstrings: Option<String> = None;
-
-                if let Node::DocString(name) = &nodes[2] {
-                    docstrings = Some(name.to_string());
-                }
-
-                let body = nodes[3].clone();
-                let func_def = Rc::new(FunctionDefinition {
-                    name: name.to_string(),
-                    parameters,
-                    docstrings,
-                    body,
-                });
-
-                env.functions.insert(name.clone(), func_def);
-                Ok(EvalResult::Void)
-            } else {
-                Err("Expected function name".to_string())
-            }
-        }
-
-        _ => Err("Unsupported node type".to_string()),
+        Node::List(l) => Ok(evaluate_list(l, env)?),
+        Node::Expression(nodes) => Ok(evaluate_expression(nodes, env)?),
+        Node::FunctionDefinition(nodes) => Ok(insert_function_definition(nodes, env)?),
+        _ => Err("Unsupported node type"),
     }
 }
 
