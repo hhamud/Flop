@@ -235,7 +235,7 @@ fn parse_token(tokens: &mut Stack<Token>) -> Result<Vec<Node>, ParseError> {
             Token::RightRoundBracket => {
                 // counter exists to count the expression brackets, both left and right
                 counter -= 1;
-                if counter == 0 {
+                if counter <= 1 {
                     // if it is a nested expression, it will carry on reducing the counter
                     // otherwise it will break to signify end of the expression
                     break;

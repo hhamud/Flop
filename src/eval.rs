@@ -81,7 +81,7 @@ fn binary_expression(
             ">=" => oper = (oper >= operand_val) as i64,
             "<" => oper = (oper < operand_val) as i64,
             "<=" => oper = (oper <= operand_val) as i64,
-            _ => return Err("Unsupported binary operation: {}"),
+            _ => return Err("Unsupported binary operation"),
         }
 
         // Short-circuit if the result is already false
@@ -133,6 +133,11 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
         return Err("Empty Expression");
     }
 
+    if nodes.len() == 1 {
+        let node = nodes.last().unwrap();
+        return Ok(evaluate(node, env)?);
+    }
+
     if nodes.len() >= 2 {
         if let Node::Symbol(symbol) = &nodes[0] {
             if ["=", ">", ">=", "<", "<="].contains(&symbol.as_str()) {
@@ -143,6 +148,10 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
 
     if let Node::Symbol(name) = &nodes[0] {
         if let Some(func_def) = env.functions.get(name) {
+            // does not recognise higher order functions
+            println!("nodes: {:?}", nodes);
+            println!("node length: {:?}", nodes.len());
+            println!("params: {:?}", func_def.parameters.len());
             if nodes.len() - 1 != func_def.parameters.len() {
                 return Err("Incorrect number of arguments");
             }
@@ -166,11 +175,6 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
         } else {
             return operation(nodes, name.as_str(), env);
         }
-    }
-
-    if nodes.len() == 1 {
-        let node = nodes.last().unwrap();
-        return Ok(evaluate(node, env)?);
     }
 
     Err("Expected function name, operator, or expression")
