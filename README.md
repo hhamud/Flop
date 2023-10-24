@@ -10,6 +10,8 @@ A hobby project bringing in lisp interoperability into the rust ecosystem
 - [x] Function Definitions
 - [x] Variable Binding
 - [x] Lists and Cons Cells
+- [x] Interactive REPL
+- [x] Read from File
 - [ ] Conditional Statements
 - [ ] Looping and Iteration
 - [ ] Dynamic Typing
@@ -24,10 +26,7 @@ A hobby project bringing in lisp interoperability into the rust ecosystem
 - [ ] External Libraries
 - [ ] Macros
 - [ ] Quoting and Unquoting
-- [ ] Reflection
-- [ ] Rich Standard Library
 - [ ] Concurrency
-- [ ] Interactive REPL
 - [ ] Package Manager
 - [ ] Debugger
 - [ ] Documentation Generator
