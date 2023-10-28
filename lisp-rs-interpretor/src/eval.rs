@@ -1,4 +1,5 @@
 use crate::ast::{FunctionDefinition, Variable};
+use crate::error::EvalError;
 use crate::parser::Node;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -28,20 +29,16 @@ impl Environment {
     }
 }
 
-fn operation(
-    ast: &[Node],
-    symbol: &str,
-    env: &mut Environment,
-) -> Result<EvalResult, &'static str> {
+fn operation(ast: &[Node], symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
     let mut oper: i64 = match evaluate(&ast[1], env)? {
         EvalResult::Integer(n) => n,
-        _ => return Err("Expected integer operand"),
+        _ => return Err(EvalError::Integer(symbol.to_string())),
     };
 
     for operand in &ast[2..] {
         let oper_val = match evaluate(operand, env)? {
             EvalResult::Integer(n) => n,
-            _ => return Err("Expected integer operand"),
+            _ => return Err(EvalError::Integer(symbol.to_string())),
         };
 
         match symbol {
@@ -49,7 +46,7 @@ fn operation(
             "-" => oper -= oper_val,
             "/" => oper /= oper_val,
             "*" => oper *= oper_val,
-            _ => return Err("Unsupported math Operation"),
+            _ => return Err(EvalError::Math(symbol.to_string())),
         }
     }
     Ok(EvalResult::Integer(oper))
@@ -59,20 +56,20 @@ fn binary_expression(
     ast: &[Node],
     symbol: &str,
     env: &mut Environment,
-) -> Result<EvalResult, &'static str> {
+) -> Result<EvalResult, EvalError> {
     if ast.len() < 3 {
-        return Err("Insufficient operands");
+        return Err(EvalError::Operands);
     }
 
     let mut oper = match evaluate(&ast[1], env)? {
         EvalResult::Integer(n) => n,
-        _ => return Err("Expected integer operand"),
+        _ => return Err(EvalError::Integer(symbol.to_string())),
     };
 
     for operand in &ast[2..] {
         let operand_val = match evaluate(operand, env)? {
             EvalResult::Integer(n) => n,
-            _ => return Err("Expected integer operand"),
+            _ => return Err(EvalError::Integer(symbol.to_string())),
         };
 
         match symbol {
@@ -81,7 +78,7 @@ fn binary_expression(
             ">=" => oper = (oper >= operand_val) as i64,
             "<" => oper = (oper < operand_val) as i64,
             "<=" => oper = (oper <= operand_val) as i64,
-            _ => return Err("Unsupported binary operation"),
+            _ => return Err(EvalError::Binary(symbol.to_string())),
         }
 
         // Short-circuit if the result is already false
@@ -93,14 +90,14 @@ fn binary_expression(
     Ok(EvalResult::Bool(oper != 0))
 }
 
-fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, &'static str> {
+fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match env.variables.get(symbol) {
         Some(variable) => Ok(evaluate(&variable.assignment.clone(), env)?),
-        _ => Err("Undefined symbol: {}"),
+        None => Err(EvalError::Variable(symbol.to_string())),
     }
 }
 
-fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, &'static str> {
+fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, EvalError> {
     let mut res = Vec::new();
     for item in list {
         res.push(evaluate(item, env)?)
@@ -112,7 +109,7 @@ fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, &'s
 fn insert_variable(
     variable: (&Box<Node>, &Box<Node>),
     env: &mut Environment,
-) -> Result<EvalResult, &'static str> {
+) -> Result<EvalResult, EvalError> {
     // Dereference the boxed node to get the actual node
     let (name_node, assignment_node) = (variable.0.deref(), variable.1.deref());
 
@@ -124,13 +121,13 @@ fn insert_variable(
         env.variables.insert(name_str.clone(), var);
         Ok(EvalResult::Void)
     } else {
-        Err("Expected a Symbol node for variable name")
+        Err(EvalError::Symbol(&name_node))
     }
 }
 
-fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResult, &'static str> {
+fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResult, EvalError> {
     if nodes.is_empty() {
-        return Err("Empty Expression");
+        return Err(EvalError::EmptyExpression(&nodes));
     }
 
     if nodes.len() == 1 {
@@ -152,8 +149,9 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
             println!("nodes: {:?}", nodes);
             println!("node length: {:?}", nodes.len());
             println!("params: {:?}", func_def.parameters.len());
+
             if nodes.len() - 1 != func_def.parameters.len() {
-                return Err("Incorrect number of arguments");
+                return Err(EvalError::Parameter(&nodes));
             }
 
             let mut local_env = Environment {
@@ -177,15 +175,15 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
         }
     }
 
-    Err("Expected function name, operator, or expression")
+    Err(EvalError::UnexpectedExpression(&nodes))
 }
 
 fn insert_function_definition(
     nodes: &[Node],
     env: &mut Environment,
-) -> Result<EvalResult, &'static str> {
+) -> Result<EvalResult, EvalError> {
     if nodes.len() < 3 {
-        return Err("Incomplete function definition");
+        return Err(EvalError::FunctionDefinition(nodes));
     }
 
     if let Node::Symbol(name) = &nodes[0] {
@@ -201,7 +199,7 @@ fn insert_function_definition(
                 })
                 .collect::<Vec<_>>()
         } else {
-            return Err("Expected parameter list");
+            return Err(EvalError::Parameter(nodes));
         };
 
         let mut docstrings: Option<String> = None;
@@ -221,11 +219,11 @@ fn insert_function_definition(
         env.functions.insert(name.clone(), func_def);
         Ok(EvalResult::Void)
     } else {
-        Err("Expected function name")
+        Err(EvalError::FunctionName(&nodes[0]))
     }
 }
 
-pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, &'static str> {
+pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
@@ -235,7 +233,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, &'stati
         Node::List(l) => Ok(evaluate_list(l, env)?),
         Node::Expression(nodes) => Ok(evaluate_expression(nodes, env)?),
         Node::FunctionDefinition(nodes) => Ok(insert_function_definition(nodes, env)?),
-        _ => Err("Unsupported node type"),
+        _ => Err(EvalError::Node(ast)),
     }
 }
 
