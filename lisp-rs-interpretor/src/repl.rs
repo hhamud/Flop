@@ -1,4 +1,5 @@
-use crate::eval::{evaluate, Environment, EvalResult};
+use crate::env::Environment;
+use crate::eval::{evaluate, EvalResult};
 use crate::lexer::tokenise;
 use crate::parser::parse;
 use std::io::{self, Write};

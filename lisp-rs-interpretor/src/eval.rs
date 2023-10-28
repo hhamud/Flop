@@ -1,7 +1,8 @@
 use crate::ast::{FunctionDefinition, Variable};
+use crate::env::Environment;
 use crate::error::EvalError;
 use crate::parser::Node;
-use std::collections::HashMap;
+
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -14,22 +15,11 @@ pub enum EvalResult {
     List(Vec<EvalResult>),
 }
 
-#[derive(Debug)]
-pub struct Environment {
-    functions: HashMap<String, Rc<FunctionDefinition>>,
-    variables: HashMap<String, Rc<Variable>>,
-}
-
-impl Environment {
-    pub fn new() -> Self {
-        Self {
-            functions: HashMap::new(),
-            variables: HashMap::new(),
-        }
-    }
-}
-
-fn operation(ast: &[Node], symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
+fn operation<'a>(
+    ast: &'a Vec<Node>,
+    symbol: &'a str,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     let mut oper: i64 = match evaluate(&ast[1], env)? {
         EvalResult::Integer(n) => n,
         _ => return Err(EvalError::Integer(symbol.to_string())),
@@ -52,11 +42,11 @@ fn operation(ast: &[Node], symbol: &str, env: &mut Environment) -> Result<EvalRe
     Ok(EvalResult::Integer(oper))
 }
 
-fn binary_expression(
-    ast: &[Node],
-    symbol: &str,
-    env: &mut Environment,
-) -> Result<EvalResult, EvalError> {
+fn binary_expression<'a>(
+    ast: &'a Vec<Node>,
+    symbol: &'a str,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     if ast.len() < 3 {
         return Err(EvalError::Operands);
     }
@@ -90,14 +80,20 @@ fn binary_expression(
     Ok(EvalResult::Bool(oper != 0))
 }
 
-fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
+fn evaluate_variable<'a>(
+    symbol: &'a str,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     match env.variables.get(symbol) {
         Some(variable) => Ok(evaluate(&variable.assignment.clone(), env)?),
         None => Err(EvalError::Variable(symbol.to_string())),
     }
 }
 
-fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, EvalError> {
+fn evaluate_list<'a>(
+    list: &'a Vec<Node>,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     let mut res = Vec::new();
     for item in list {
         res.push(evaluate(item, env)?)
@@ -106,10 +102,10 @@ fn evaluate_list(list: &[Node], env: &mut Environment) -> Result<EvalResult, Eva
     Ok(EvalResult::List(res))
 }
 
-fn insert_variable(
-    variable: (&Box<Node>, &Box<Node>),
+fn insert_variable<'a>(
+    variable: (&'a Box<Node>, &'a Box<Node>),
     env: &mut Environment,
-) -> Result<EvalResult, EvalError> {
+) -> Result<EvalResult, EvalError<'a>> {
     // Dereference the boxed node to get the actual node
     let (name_node, assignment_node) = (variable.0.deref(), variable.1.deref());
 
@@ -121,13 +117,16 @@ fn insert_variable(
         env.variables.insert(name_str.clone(), var);
         Ok(EvalResult::Void)
     } else {
-        Err(EvalError::Symbol(&name_node))
+        Err(EvalError::Symbol(name_node))
     }
 }
 
-fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResult, EvalError> {
+fn evaluate_expression<'a>(
+    nodes: &'a Vec<Node>,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     if nodes.is_empty() {
-        return Err(EvalError::EmptyExpression(&nodes));
+        return Err(EvalError::EmptyExpression(nodes));
     }
 
     if nodes.len() == 1 {
@@ -146,12 +145,9 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
     if let Node::Symbol(name) = &nodes[0] {
         if let Some(func_def) = env.functions.get(name) {
             // does not recognise higher order functions
-            println!("nodes: {:?}", nodes);
-            println!("node length: {:?}", nodes.len());
-            println!("params: {:?}", func_def.parameters.len());
 
             if nodes.len() - 1 != func_def.parameters.len() {
-                return Err(EvalError::Parameter(&nodes));
+                return Err(EvalError::Parameter(nodes));
             }
 
             let mut local_env = Environment {
@@ -175,13 +171,13 @@ fn evaluate_expression(nodes: &[Node], env: &mut Environment) -> Result<EvalResu
         }
     }
 
-    Err(EvalError::UnexpectedExpression(&nodes))
+    Err(EvalError::UnexpectedExpression(nodes))
 }
 
-fn insert_function_definition(
-    nodes: &[Node],
-    env: &mut Environment,
-) -> Result<EvalResult, EvalError> {
+fn insert_function_definition<'a>(
+    nodes: &'a Vec<Node>,
+    env: &'a mut Environment,
+) -> Result<EvalResult, EvalError<'a>> {
     if nodes.len() < 3 {
         return Err(EvalError::FunctionDefinition(nodes));
     }
@@ -223,7 +219,7 @@ fn insert_function_definition(
     }
 }
 
-pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
+pub fn evaluate<'a>(ast: &'a Node, env: &'a mut Environment) -> Result<EvalResult, EvalError<'a>> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
