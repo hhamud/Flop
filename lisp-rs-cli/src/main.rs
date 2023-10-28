@@ -16,13 +16,9 @@ struct Opts {
 fn main() {
     let opts = Opts::parse();
 
-    if opts.repl {
-        println!("Starting REPL mode...");
-        repl();
-    } else if let Some(file) = opts.file {
-        println!("Reading from file: {:?}", file);
-        read_file(file);
-    } else {
-        println!("Please specify a mode: --repl or --file <FILE_PATH>");
+    match (&opts.repl, &opts.file) {
+        (true, _) => repl(),
+        (_, Some(file)) => read_file(file),
+        _ => println!("Please specify a mode: --repl or --file <FILE_PATH>"),
     }
 }

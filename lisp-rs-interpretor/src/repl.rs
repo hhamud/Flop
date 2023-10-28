@@ -4,6 +4,7 @@ use crate::parser::parse;
 use std::io::{self, Write};
 
 pub fn repl() {
+    println!("Starting REPL mode...");
     let mut env = Environment::new();
 
     loop {
