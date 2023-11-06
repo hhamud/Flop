@@ -1,4 +1,4 @@
-use crate::parser::Node;
+use flop_frontend::parser::Node;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDefinition {

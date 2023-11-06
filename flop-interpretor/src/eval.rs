@@ -1,7 +1,7 @@
 use crate::ast::{FunctionDefinition, Variable};
 use crate::env::Environment;
 use crate::error::EvalError;
-use crate::parser::Node;
+use flop_frontend::parser::Node;
 
 use std::ops::Deref;
 use std::rc::Rc;

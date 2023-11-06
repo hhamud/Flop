@@ -2,8 +2,9 @@
 members = [
     "flop",
     "flop-interpretor",
+    "flop-frontend",
+    "flop-compiler",
 ]
-
 
 resolver = "2"
 

@@ -1,5 +1,4 @@
-use crate::lexer::Token;
-use crate::parser::Node;
+use flop_frontend::parser::Node;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -30,16 +29,4 @@ pub enum EvalError<'a> {
     UnexpectedExpression(&'a Vec<Node>),
     #[error("Expected a symbol node as a variable name: {:?}", .0)]
     Symbol(&'a Node),
-}
-
-#[derive(Debug)]
-pub enum ParseError {
-    InputError(&'static str),
-    TokenError(TokenError),
-}
-
-#[derive(Debug)]
-pub struct TokenError {
-    pub message: &'static str,
-    pub token: Token,
 }

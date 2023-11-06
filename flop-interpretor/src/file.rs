@@ -1,7 +1,6 @@
 use crate::env::Environment;
 use crate::eval::{evaluate, EvalResult};
-use crate::lexer::tokenise;
-use crate::parser::parse;
+use flop_frontend::{lexer::tokenise, parser::parse};
 
 use std::fs::File;
 use std::io::Read;

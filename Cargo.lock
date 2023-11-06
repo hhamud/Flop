@@ -105,9 +105,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "flop-compiler"
+version = "0.1.0"
+
+[[package]]
+name = "flop-frontend"
+version = "0.1.0"
+
+[[package]]
 name = "flop-interpretor"
 version = "0.1.0"
 dependencies = [
+ "flop-frontend",
  "thiserror",
 ]
 
