@@ -2,7 +2,7 @@ use flop_frontend::parser::Node;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum EvalError<'a> {
+pub enum EvalError {
     #[error("Variable is not defined: {}", .0)]
     Variable(String),
     #[error("Expected Integer operand: {}", .0)]
@@ -16,17 +16,17 @@ pub enum EvalError<'a> {
     #[error("Insufficient operands")]
     Operands,
     #[error("Unsupported node type: {:?}", .0)]
-    Node(&'a Node),
+    Node(Node),
     #[error("Incomplete Function Definition: {}", .0.len())]
-    FunctionDefinition(&'a Vec<Node>),
+    FunctionDefinition(Vec<Node>),
     #[error("Expected Parameter List but parameter list provided is: {:?}", .0)]
-    Parameter(&'a Vec<Node>),
+    Parameter(Vec<Node>),
     #[error("Expected a function name: {:?}", .0)]
-    FunctionName(&'a Node),
+    FunctionName(Node),
     #[error("Empty Expression: {:?}", .0)]
-    EmptyExpression(&'a Vec<Node>),
+    EmptyExpression(Vec<Node>),
     #[error("Expected function name, operator, or expression: {:?}", .0)]
-    UnexpectedExpression(&'a Vec<Node>),
+    UnexpectedExpression(Vec<Node>),
     #[error("Expected a symbol node as a variable name: {:?}", .0)]
-    Symbol(&'a Node),
+    Symbol(Node),
 }
