@@ -1,5 +1,4 @@
-use lisp_rs::file::read_file;
-use lisp_rs::repl::repl;
+use flop_interpretor::{file::read_file, repl::repl};
 
 use clap::Parser;
 

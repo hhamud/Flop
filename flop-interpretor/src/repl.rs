@@ -28,7 +28,6 @@ pub fn repl() {
             EvalResult::List(n) => println!("{:?}", n),
             EvalResult::Bool(n) => println!("{:?}", n),
             EvalResult::Void => {}
-            _ => panic!("failed to evaluate"),
         }
     }
 }

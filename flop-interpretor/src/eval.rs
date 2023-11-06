@@ -84,8 +84,9 @@ fn evaluate_variable<'a>(
     symbol: &'a str,
     env: &'a mut Environment,
 ) -> Result<EvalResult, EvalError<'a>> {
+    let mut new_env = env.clone();
     match env.variables.get(symbol) {
-        Some(variable) => Ok(evaluate(&variable.assignment.clone(), env)?),
+        Some(variable) => Ok(evaluate(&variable.assignment, &mut new_env)?),
         None => Err(EvalError::Variable(symbol.to_string())),
     }
 }
@@ -104,7 +105,7 @@ fn evaluate_list<'a>(
 
 fn insert_variable<'a>(
     variable: (&'a Box<Node>, &'a Box<Node>),
-    env: &mut Environment,
+    env: &'a mut Environment,
 ) -> Result<EvalResult, EvalError<'a>> {
     // Dereference the boxed node to get the actual node
     let (name_node, assignment_node) = (variable.0.deref(), variable.1.deref());
@@ -145,6 +146,7 @@ fn evaluate_expression<'a>(
     if let Node::Symbol(name) = &nodes[0] {
         if let Some(func_def) = env.functions.get(name) {
             // does not recognise higher order functions
+            //
 
             if nodes.len() - 1 != func_def.parameters.len() {
                 return Err(EvalError::Parameter(nodes));

@@ -1,7 +1,17 @@
 [workspace]
-
 members = [
-    "lisp-rs-cli",
-    "lisp-rs-interpretor",
+    "flop",
+    "flop-interpretor",
 ]
 
+
+resolver = "2"
+
+[workspace.package]
+name = "flop"
+version = "0.1.0"
+edition = "2021"
+authors = ["Hamza Hamud <self@hamzahamud.com>"]
+license = "AGPL"
+repository = "https://github.com/flop/flop"
+readme = "README.md"
