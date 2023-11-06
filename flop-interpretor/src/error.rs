@@ -5,8 +5,8 @@ use thiserror::Error;
 pub enum EvalError {
     #[error("Variable is not defined: {}", .0)]
     Variable(String),
-    #[error("Expected Integer operand: {}", .0)]
-    Integer(String),
+    #[error("Full array of {:?} for expected Integer operand {:?} and operand {:?} with symbol {:?}", .0, .1, .2, .3)]
+    Integer(Vec<Node>, Node, Vec<Node>, String),
     #[error("Unsupported Math operation: {}", .0)]
     Math(String),
     #[error("Unsupported Binary operation: {}", .0)]

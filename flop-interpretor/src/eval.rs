@@ -2,7 +2,6 @@ use crate::ast::{FunctionDefinition, Variable};
 use crate::env::Environment;
 use crate::error::EvalError;
 use flop_frontend::parser::Node;
-
 use std::ops::Deref;
 
 #[derive(Debug)]
@@ -17,13 +16,27 @@ pub enum EvalResult {
 fn operation(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalError> {
     let mut oper: i64 = match &ast[1] {
         Node::Integer(n) => *n,
-        _ => return Err(EvalError::Integer(symbol.to_string())),
+        _ => {
+            return Err(EvalError::Integer(
+                ast.clone(),
+                ast[1].clone(),
+                ast[2..].to_vec(),
+                symbol.to_string(),
+            ))
+        }
     };
 
     for operand in &ast[2..] {
         let oper_val = match operand {
             Node::Integer(n) => n,
-            _ => return Err(EvalError::Integer(symbol.to_string())),
+            _ => {
+                return Err(EvalError::Integer(
+                    ast.clone(),
+                    ast[1].clone(),
+                    ast[2..].to_vec(),
+                    symbol.to_string(),
+                ))
+            }
         };
 
         match symbol {
@@ -44,13 +57,29 @@ fn binary_expression(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalEr
 
     let mut oper = match &ast[1] {
         Node::Integer(n) => *n,
-        _ => return Err(EvalError::Integer(symbol.to_string())),
+
+        _ => {
+            return Err(EvalError::Integer(
+                ast.clone(),
+                ast[1].clone(),
+                ast[2..].to_vec(),
+                symbol.to_string(),
+            ))
+        }
     };
 
     for operand in &ast[2..] {
         let operand_val = match operand {
             Node::Integer(n) => n,
-            _ => return Err(EvalError::Integer(symbol.to_string())),
+
+            _ => {
+                return Err(EvalError::Integer(
+                    ast.clone(),
+                    ast[1].clone(),
+                    ast[2..].to_vec(),
+                    symbol.to_string(),
+                ))
+            }
         };
 
         match symbol {
@@ -72,16 +101,17 @@ fn binary_expression(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalEr
 }
 
 fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
+    let mut e = env.clone();
     match env.variables.get(symbol) {
-        Some(variable) => evaluate_primitives(&variable.assignment),
+        Some(variable) => evaluate(&variable.assignment, &mut e),
         None => Err(EvalError::Variable(symbol.to_string())),
     }
 }
 
-fn evaluate_list(list: &Vec<Node>) -> Result<EvalResult, EvalError> {
+fn evaluate_list(list: &Vec<Node>, env: &mut Environment) -> Result<EvalResult, EvalError> {
     let mut res = Vec::new();
     for item in list {
-        res.push(evaluate_primitives(item)?)
+        res.push(evaluate(item, env)?)
     }
 
     Ok(EvalResult::List(res))
@@ -114,7 +144,7 @@ fn evaluate_expression(nodes: &Vec<Node>, env: &mut Environment) -> Result<EvalR
     if nodes.len() == 1 {
         let node = nodes.last().unwrap();
         // could either be a bool, int, string or var & func call
-        return Ok(evaluate(node, env)?);
+        return evaluate(node, env);
     }
 
     if nodes.len() >= 2 {
@@ -205,22 +235,13 @@ fn insert_function_definition(
     }
 }
 
-fn evaluate_primitives(ast: &Node) -> Result<EvalResult, EvalError> {
+// refactor this and split up the functions
+pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
         Node::Bool(b) => Ok(EvalResult::Bool(*b)),
-        _ => Err(EvalError::Node(ast.clone())),
-    }
-}
-
-// refactor this and split up the functions
-pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
-    match ast {
-        //primitive eval
-        Node::Integer(_) | Node::StringLiteral(_) | Node::Bool(_) => evaluate_primitives(ast),
-        Node::List(l) => evaluate_list(l),
-        // non primitive eval
+        Node::List(l) => evaluate_list(l, env),
         Node::Symbol(s) => evaluate_variable(s, env),
         Node::Variable(n, v) => insert_variable((n, v), env),
         Node::Expression(nodes) => evaluate_expression(nodes, env),
@@ -233,8 +254,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalErr
 mod tests {
     use super::*;
     use crate::helpers::eval_test;
-    use crate::lexer::tokenise;
-    use crate::parser::parse;
+    use flop_frontend::{lexer::tokenise, parser::parse};
 
     #[test]
     fn add() {
@@ -298,7 +318,8 @@ mod tests {
         // Check the result
         match result {
             Ok(EvalResult::Integer(n)) => assert_eq!(n, 5),
-            _ => panic!("Expected integer result of 5"),
+            Err(e) => panic!("Expected integer result of 5: got {e}"),
+            _ => todo!(),
         }
     }
 }
