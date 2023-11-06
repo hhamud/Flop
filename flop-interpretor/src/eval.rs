@@ -4,7 +4,6 @@ use crate::error::EvalError;
 use flop_frontend::parser::Node;
 
 use std::ops::Deref;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum EvalResult {
@@ -15,19 +14,15 @@ pub enum EvalResult {
     List(Vec<EvalResult>),
 }
 
-fn operation<'a>(
-    ast: &'a Vec<Node>,
-    symbol: &'a str,
-    env: &'a mut Environment,
-) -> Result<EvalResult, EvalError<'a>> {
-    let mut oper: i64 = match evaluate(&ast[1], env)? {
-        EvalResult::Integer(n) => n,
+fn operation<'a>(ast: &'a Vec<Node>, symbol: &'a str) -> Result<EvalResult, EvalError<'a>> {
+    let mut oper: i64 = match &ast[1] {
+        Node::Integer(n) => *n,
         _ => return Err(EvalError::Integer(symbol.to_string())),
     };
 
     for operand in &ast[2..] {
-        let oper_val = match evaluate(operand, env)? {
-            EvalResult::Integer(n) => n,
+        let oper_val = match operand {
+            Node::Integer(n) => n,
             _ => return Err(EvalError::Integer(symbol.to_string())),
         };
 
@@ -42,32 +37,28 @@ fn operation<'a>(
     Ok(EvalResult::Integer(oper))
 }
 
-fn binary_expression<'a>(
-    ast: &'a Vec<Node>,
-    symbol: &'a str,
-    env: &'a mut Environment,
-) -> Result<EvalResult, EvalError<'a>> {
+fn binary_expression<'a>(ast: &'a Vec<Node>, symbol: &'a str) -> Result<EvalResult, EvalError<'a>> {
     if ast.len() < 3 {
         return Err(EvalError::Operands);
     }
 
-    let mut oper = match evaluate(&ast[1], env)? {
-        EvalResult::Integer(n) => n,
+    let mut oper = match &ast[1] {
+        Node::Integer(n) => *n,
         _ => return Err(EvalError::Integer(symbol.to_string())),
     };
 
     for operand in &ast[2..] {
-        let operand_val = match evaluate(operand, env)? {
-            EvalResult::Integer(n) => n,
+        let operand_val = match operand {
+            Node::Integer(n) => n,
             _ => return Err(EvalError::Integer(symbol.to_string())),
         };
 
         match symbol {
-            "=" => oper = (oper == operand_val) as i64,
-            ">" => oper = (oper > operand_val) as i64,
-            ">=" => oper = (oper >= operand_val) as i64,
-            "<" => oper = (oper < operand_val) as i64,
-            "<=" => oper = (oper <= operand_val) as i64,
+            "=" => oper = (oper == *operand_val) as i64,
+            ">" => oper = (oper > *operand_val) as i64,
+            ">=" => oper = (oper >= *operand_val) as i64,
+            "<" => oper = (oper < *operand_val) as i64,
+            "<=" => oper = (oper <= *operand_val) as i64,
             _ => return Err(EvalError::Binary(symbol.to_string())),
         }
 
@@ -84,20 +75,16 @@ fn evaluate_variable<'a>(
     symbol: &'a str,
     env: &'a mut Environment,
 ) -> Result<EvalResult, EvalError<'a>> {
-    let mut new_env = env.clone();
     match env.variables.get(symbol) {
-        Some(variable) => Ok(evaluate(&variable.assignment, &mut new_env)?),
+        Some(variable) => evaluate_primitives(&variable.assignment),
         None => Err(EvalError::Variable(symbol.to_string())),
     }
 }
 
-fn evaluate_list<'a>(
-    list: &'a Vec<Node>,
-    env: &'a mut Environment,
-) -> Result<EvalResult, EvalError<'a>> {
+fn evaluate_list<'a>(list: &'a Vec<Node>) -> Result<EvalResult, EvalError<'a>> {
     let mut res = Vec::new();
     for item in list {
-        res.push(evaluate(item, env)?)
+        res.push(evaluate_primitives(item)?)
     }
 
     Ok(EvalResult::List(res))
@@ -111,10 +98,10 @@ fn insert_variable<'a>(
     let (name_node, assignment_node) = (variable.0.deref(), variable.1.deref());
 
     if let Node::Symbol(name_str) = name_node {
-        let var = Rc::new(Variable {
+        let var = Variable {
             name: name_str.clone(),
             assignment: assignment_node.clone(),
-        });
+        };
         env.variables.insert(name_str.clone(), var);
         Ok(EvalResult::Void)
     } else {
@@ -132,21 +119,22 @@ fn evaluate_expression<'a>(
 
     if nodes.len() == 1 {
         let node = nodes.last().unwrap();
+        // could either be a bool, int, string or var & func call
         return Ok(evaluate(node, env)?);
     }
 
     if nodes.len() >= 2 {
         if let Node::Symbol(symbol) = &nodes[0] {
             if ["=", ">", ">=", "<", "<="].contains(&symbol.as_str()) {
-                return binary_expression(&nodes, symbol, env);
+                return binary_expression(&nodes, symbol);
             }
         }
     }
 
+    // already checks if it is a function call
     if let Node::Symbol(name) = &nodes[0] {
         if let Some(func_def) = env.functions.get(name) {
             // does not recognise higher order functions
-            //
 
             if nodes.len() - 1 != func_def.parameters.len() {
                 return Err(EvalError::Parameter(nodes));
@@ -160,16 +148,18 @@ fn evaluate_expression<'a>(
             for (param, arg) in func_def.parameters.iter().zip(&nodes[1..]) {
                 local_env.variables.insert(
                     param.clone(),
-                    Rc::new(Variable {
+                    Variable {
                         name: param.clone(),
                         assignment: arg.clone(),
-                    }),
+                    },
                 );
             }
 
+            // evaluate function bidy
             return evaluate(&func_def.body, &mut local_env);
         } else {
-            return operation(nodes, name.as_str(), env);
+            // if it is not a function call then it is a math operation
+            return operation(nodes, name.as_str());
         }
     }
 
@@ -207,12 +197,12 @@ fn insert_function_definition<'a>(
         }
 
         let body = nodes[3].clone();
-        let func_def = Rc::new(FunctionDefinition {
+        let func_def = FunctionDefinition {
             name: name.to_string(),
             parameters,
             docstrings,
             body,
-        });
+        };
 
         env.functions.insert(name.clone(), func_def);
         Ok(EvalResult::Void)
@@ -221,16 +211,26 @@ fn insert_function_definition<'a>(
     }
 }
 
-pub fn evaluate<'a>(ast: &'a Node, env: &'a mut Environment) -> Result<EvalResult, EvalError<'a>> {
+fn evaluate_primitives(ast: &Node) -> Result<EvalResult, EvalError> {
     match ast {
         Node::Integer(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
-        Node::Symbol(s) => Ok(evaluate_variable(s, env)?),
-        Node::Variable(n, v) => Ok(insert_variable((n, v), env)?),
         Node::Bool(b) => Ok(EvalResult::Bool(*b)),
-        Node::List(l) => Ok(evaluate_list(l, env)?),
-        Node::Expression(nodes) => Ok(evaluate_expression(nodes, env)?),
-        Node::FunctionDefinition(nodes) => Ok(insert_function_definition(nodes, env)?),
+        _ => Err(EvalError::Node(ast)),
+    }
+}
+
+// refactor this and split up the functions
+pub fn evaluate<'a>(ast: &'a Node, env: &'a mut Environment) -> Result<EvalResult, EvalError<'a>> {
+    match ast {
+        //primitive eval
+        Node::Integer(_) | Node::StringLiteral(_) | Node::Bool(_) => evaluate_primitives(ast),
+        Node::List(l) => evaluate_list(l),
+        // non primitive eval
+        Node::Symbol(s) => evaluate_variable(s, env),
+        Node::Variable(n, v) => insert_variable((n, v), env),
+        Node::Expression(nodes) => evaluate_expression(nodes, env),
+        Node::FunctionDefinition(nodes) => insert_function_definition(nodes, env),
         _ => Err(EvalError::Node(ast)),
     }
 }

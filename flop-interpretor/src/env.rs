@@ -1,10 +1,10 @@
 use crate::ast::{FunctionDefinition, Variable};
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
-    pub functions: HashMap<String, Rc<FunctionDefinition>>,
-    pub variables: HashMap<String, Rc<Variable>>,
+    pub functions: HashMap<String, FunctionDefinition>,
+    pub variables: HashMap<String, Variable>,
 }
 
 impl Environment {
