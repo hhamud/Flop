@@ -13,9 +13,13 @@ pub enum EvalResult {
     List(Vec<EvalResult>),
 }
 
-fn operation(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalError> {
-    let mut oper: i64 = match &ast[1] {
-        Node::Integer(n) => *n,
+fn operation(
+    ast: &Vec<Node>,
+    symbol: &str,
+    env: &mut Environment,
+) -> Result<EvalResult, EvalError> {
+    let mut oper: i64 = match evaluate(&ast[1], env)? {
+        EvalResult::Integer(n) => n,
         _ => {
             return Err(EvalError::Integer(
                 ast.clone(),
@@ -27,8 +31,8 @@ fn operation(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalError> {
     };
 
     for operand in &ast[2..] {
-        let oper_val = match operand {
-            Node::Integer(n) => n,
+        let oper_val = match evaluate(operand, env)? {
+            EvalResult::Integer(n) => n,
             _ => {
                 return Err(EvalError::Integer(
                     ast.clone(),
@@ -50,14 +54,17 @@ fn operation(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalError> {
     Ok(EvalResult::Integer(oper))
 }
 
-fn binary_expression(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalError> {
+fn binary_expression(
+    ast: &Vec<Node>,
+    symbol: &str,
+    env: &mut Environment,
+) -> Result<EvalResult, EvalError> {
     if ast.len() < 3 {
         return Err(EvalError::Operands);
     }
 
-    let mut oper = match &ast[1] {
-        Node::Integer(n) => *n,
-
+    let mut oper = match evaluate(&ast[1], env)? {
+        EvalResult::Integer(n) => n,
         _ => {
             return Err(EvalError::Integer(
                 ast.clone(),
@@ -69,8 +76,8 @@ fn binary_expression(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalEr
     };
 
     for operand in &ast[2..] {
-        let operand_val = match operand {
-            Node::Integer(n) => n,
+        let operand_val = match evaluate(operand, env)? {
+            EvalResult::Integer(n) => n,
 
             _ => {
                 return Err(EvalError::Integer(
@@ -83,11 +90,11 @@ fn binary_expression(ast: &Vec<Node>, symbol: &str) -> Result<EvalResult, EvalEr
         };
 
         match symbol {
-            "=" => oper = (oper == *operand_val) as i64,
-            ">" => oper = (oper > *operand_val) as i64,
-            ">=" => oper = (oper >= *operand_val) as i64,
-            "<" => oper = (oper < *operand_val) as i64,
-            "<=" => oper = (oper <= *operand_val) as i64,
+            "=" => oper = (oper == operand_val) as i64,
+            ">" => oper = (oper > operand_val) as i64,
+            ">=" => oper = (oper >= operand_val) as i64,
+            "<" => oper = (oper < operand_val) as i64,
+            "<=" => oper = (oper <= operand_val) as i64,
             _ => return Err(EvalError::Binary(symbol.to_string())),
         }
 
@@ -150,7 +157,7 @@ fn evaluate_expression(nodes: &Vec<Node>, env: &mut Environment) -> Result<EvalR
     if nodes.len() >= 2 {
         if let Node::Symbol(symbol) = &nodes[0] {
             if ["=", ">", ">=", "<", "<="].contains(&symbol.as_str()) {
-                return binary_expression(&nodes, symbol);
+                return binary_expression(&nodes, symbol, env);
             }
         }
     }
@@ -180,10 +187,10 @@ fn evaluate_expression(nodes: &Vec<Node>, env: &mut Environment) -> Result<EvalR
             }
 
             // evaluate function bidy
-            return evaluate(&func_def.body, &mut local_env.clone());
+            return evaluate(&func_def.body, &mut local_env);
         } else {
             // if it is not a function call then it is a math operation
-            return operation(nodes, name.as_str());
+            return operation(nodes, name.as_str(), env);
         }
     }
 

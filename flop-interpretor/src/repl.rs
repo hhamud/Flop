@@ -21,12 +21,13 @@ pub fn repl() {
         let mut tokens = tokenise(input);
         let ast = parse(&mut tokens).unwrap();
 
-        match evaluate(&ast, &mut env).unwrap() {
-            EvalResult::Integer(n) => println!("{:?}", n),
-            EvalResult::StringLiteral(n) => println!("{:?}", n),
-            EvalResult::List(n) => println!("{:?}", n),
-            EvalResult::Bool(n) => println!("{:?}", n),
-            EvalResult::Void => {}
+        match evaluate(&ast, &mut env) {
+            Ok(EvalResult::Integer(n)) => println!("{:?}", n),
+            Ok(EvalResult::StringLiteral(n)) => println!("{:?}", n),
+            Ok(EvalResult::List(n)) => println!("{:?}", n),
+            Ok(EvalResult::Bool(n)) => println!("{:?}", n),
+            Ok(EvalResult::Void) => println!("void"),
+            Err(e) => panic!("{e}"),
         }
     }
 }
