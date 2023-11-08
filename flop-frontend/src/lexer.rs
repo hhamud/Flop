@@ -8,6 +8,7 @@ pub enum Token {
     Symbol(String),
     StringLiteral(String),
     Bool(bool),
+    Conditional,
     LeftRoundBracket,
     RightRoundBracket,
     LeftSquareBracket,
@@ -20,7 +21,7 @@ pub enum Token {
 
 const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
 
-const KEYWORDS: [&str; 2] = ["defn", "setq"];
+const KEYWORDS: [&str; 3] = ["defn", "setq", "if"];
 
 fn peek_for_keywords(chars: &mut Peekable<Chars>) -> Option<&'static str> {
     for &keyword in &KEYWORDS {
@@ -77,6 +78,7 @@ pub fn tokenise(code: String) -> Stack<Token> {
                     match keyword {
                         "defn" => stack.push(Token::FunctionDefinition),
                         "setq" => stack.push(Token::VariableDefinition),
+                        "if" => stack.push(Token::Conditional),
                         _ => unreachable!(),
                     }
                 } else {
@@ -186,6 +188,31 @@ mod tests {
                 Token::VariableDefinition,
                 Token::Symbol("lmao".to_string()),
                 Token::StringLiteral("hi".to_string()),
+            ]
+        )
+    }
+
+    #[test]
+    fn test_if() {
+        let code = r#"(if (> 1 2) (print "1") (print 2))"#.to_string();
+        let tokens = tokenise(code);
+        assert_eq!(
+            tokens.data,
+            vec![
+                Token::Conditional,
+                Token::LeftRoundBracket,
+                Token::Symbol(">".to_string()),
+                Token::Integer(1),
+                Token::Integer(2),
+                Token::RightRoundBracket,
+                Token::LeftRoundBracket,
+                Token::Symbol("print".to_string()),
+                Token::StringLiteral("1".to_string()),
+                Token::RightRoundBracket,
+                Token::LeftRoundBracket,
+                Token::Symbol("print".to_string()),
+                Token::Integer(2),
+                Token::RightRoundBracket,
             ]
         )
     }
