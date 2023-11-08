@@ -9,25 +9,35 @@ pub fn repl() {
 
     loop {
         print!("> ");
-        io::stdout().flush().unwrap();
+
+        if let Err(e) = io::stdout().flush() {
+            println!("Error flushing stdout: {:?}", e);
+            continue;
+        }
 
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+
+        if let Err(e) = io::stdin().read_line(&mut input) {
+            println!("Error reading line: {:?}", e);
+            continue;
+        }
 
         if input.trim() == "exit" || input.trim() == "quit" {
             break;
         }
 
         let mut tokens = tokenise(input);
-        let ast = parse(&mut tokens).unwrap();
 
-        match evaluate(&ast, &mut env) {
-            Ok(EvalResult::Integer(n)) => println!("{:?}", n),
-            Ok(EvalResult::StringLiteral(n)) => println!("{:?}", n),
-            Ok(EvalResult::List(n)) => println!("{:?}", n),
-            Ok(EvalResult::Bool(n)) => println!("{:?}", n),
-            Ok(EvalResult::Void) => println!("void"),
-            Err(e) => panic!("{e}"),
+        match parse(&mut tokens) {
+            Ok(ast) => match evaluate(&ast, &mut env) {
+                Ok(EvalResult::Integer(n)) => println!("{:?}", n),
+                Ok(EvalResult::StringLiteral(n)) => println!("{:?}", n),
+                Ok(EvalResult::List(n)) => println!("{:?}", n),
+                Ok(EvalResult::Bool(n)) => println!("{:?}", n),
+                Ok(EvalResult::Void) => {}
+                Err(e) => println!("Evaluation error: {:?}", e),
+            },
+            Err(e) => println!("Parsing error: {:?}", e),
         }
     }
 }

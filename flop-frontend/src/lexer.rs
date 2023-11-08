@@ -1,3 +1,5 @@
+use std::{iter::Peekable, str::Chars};
+
 use crate::stack::Stack;
 
 #[derive(Debug, PartialEq)]
@@ -20,7 +22,7 @@ const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
 
 const KEYWORDS: [&str; 2] = ["defn", "setq"];
 
-fn peek_for_keywords(chars: &mut std::iter::Peekable<std::str::Chars>) -> Option<&'static str> {
+fn peek_for_keywords(chars: &mut Peekable<Chars>) -> Option<&'static str> {
     for &keyword in &KEYWORDS {
         let next_chars: String = chars.clone().take(keyword.len() + 1).collect();
         if &next_chars[1..] == keyword {
@@ -33,10 +35,7 @@ fn peek_for_keywords(chars: &mut std::iter::Peekable<std::str::Chars>) -> Option
     None
 }
 
-fn extract_string_content(
-    chars: &mut std::iter::Peekable<std::str::Chars>,
-    stack: &Stack<Token>,
-) -> Token {
+fn extract_string_content(chars: &mut Peekable<Chars>, stack: &Stack<Token>) -> Token {
     // check for docstrings
     let mut res = String::new();
     chars.next(); // skip the opening quote
@@ -54,7 +53,7 @@ fn extract_string_content(
     }
 }
 
-fn extract_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> String {
+fn extract_word(chars: &mut Peekable<Chars>) -> String {
     let mut word = String::new();
     while let Some(&next_char) = chars.peek() {
         if next_char.is_whitespace() || SPECIAL_CHARS.contains(&next_char) {

@@ -1,6 +1,5 @@
-use flop_interpretor::{file::read_file, repl::repl};
-
 use clap::Parser;
+use flop_interpretor::{file::read_file, repl::repl};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
