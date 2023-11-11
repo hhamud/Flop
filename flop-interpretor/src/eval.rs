@@ -107,6 +107,21 @@ fn binary_expression(
     Ok(EvalResult::Bool(oper != 0))
 }
 
+fn evaluate_conditional(ast: &Vec<Node>, env: &mut Environment) -> Result<EvalResult, EvalError> {
+    //(if (some sort of comparison) (expression) (expression))
+    // eval left if true, eval right if not true
+
+    let condition = evaluate(&ast[0], env)?;
+
+    if let EvalResult::Bool(true) = condition {
+        // Evaluate and return the true branch
+        return evaluate(&ast[1], env);
+    } else {
+        // Evaluate and return the false branch
+        return evaluate(&ast[2], env);
+    }
+}
+
 fn evaluate_variable(symbol: &str, env: &mut Environment) -> Result<EvalResult, EvalError> {
     let mut e = env.clone();
     match env.variables.get(symbol) {
@@ -253,6 +268,7 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalErr
         Node::Variable(n, v) => insert_variable((n, v), env),
         Node::Expression(nodes) => evaluate_expression(nodes, env),
         Node::FunctionDefinition(nodes) => insert_function_definition(nodes, env),
+        Node::Conditional(nodes) => evaluate_conditional(nodes, env),
         _ => Err(EvalError::Node(ast.clone())),
     }
 }
@@ -325,6 +341,25 @@ mod tests {
         // Check the result
         match result {
             Ok(EvalResult::Integer(n)) => assert_eq!(n, 5),
+            Err(e) => panic!("Expected integer result of 5: got {e}"),
+            _ => todo!(),
+        }
+    }
+
+    #[test]
+    fn if_statement() {
+        let code = r#"(if (> 1 2) (+ 1 1) (+ 2 2))"#.to_string();
+        let mut tokens = tokenise(code);
+
+        let ast = parse(&mut tokens).unwrap();
+
+        let mut env = Environment::new();
+
+        let result = evaluate(&ast, &mut env);
+
+        // Check the result
+        match result {
+            Ok(EvalResult::Integer(n)) => assert_eq!(n, 4),
             Err(e) => panic!("Expected integer result of 5: got {e}"),
             _ => todo!(),
         }

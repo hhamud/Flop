@@ -12,6 +12,7 @@ pub enum Node {
     Expression(Vec<Node>),
     FunctionDefinition(Vec<Node>),
     Parameter(Vec<Node>),
+    Conditional(Vec<Node>),
     DocString(String),
     Variable(Box<Node>, Box<Node>),
     StringLiteral(String),
@@ -21,6 +22,7 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     let nodes = match tokens.data[0] {
         Token::FunctionDefinition => parse_function_definition(tokens)?,
         Token::VariableDefinition => parse_variables(tokens)?,
+        Token::Conditional => parse_conditional(tokens)?,
         _ => parse_expression(tokens)?,
     };
 
@@ -29,6 +31,76 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     } else {
         Err(ParseError::InputError("Extra tokens remaining"))
     }
+}
+
+fn parse_conditional(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+    let mut nodes: Vec<Node> = Vec::new();
+    let mut pcounter = 1;
+    let mut counter = 0;
+
+    while let Some(token) = tokens.pop_front() {
+        match token {
+            Token::Conditional => continue,
+
+            Token::VariableDefinition => {
+                nodes.push(parse_variables(tokens)?);
+            }
+
+            Token::Symbol(s) => {
+                nodes.push(Node::Symbol(s));
+            }
+
+            Token::Integer(n) => {
+                nodes.push(Node::Integer(n));
+            }
+
+            Token::Bool(b) => {
+                nodes.push(Node::Bool(b));
+            }
+
+            Token::LeftRoundBracket => {
+                // counter exists to count the expression brackets, both left and right
+                counter += 1;
+                if counter > 0 {
+                    // if it is a nested expression, it will add to the node
+                    // otherwise it will skip this and carry on
+                    nodes.push(parse_expression(tokens)?)
+                }
+            }
+
+            Token::RightRoundBracket => {
+                // counter exists to count the expression brackets, both left and right
+                counter -= 1;
+                if counter == 0 {
+                    // if it is a nested expression, it will carry on reducing the counter
+                    // otherwise it will break to signify end of the expression
+                    break;
+                }
+            }
+
+            Token::LeftSquareBracket => {
+                pcounter += 1;
+                if pcounter > 1 {
+                    nodes.push(parse_parameter(tokens)?)
+                }
+            }
+
+            Token::RightSquareBracket => {
+                pcounter -= 1;
+                if pcounter == 0 {
+                    break;
+                }
+            }
+
+            _ => {
+                return Err(ParseError::TokenError(TokenError {
+                    message: "Conditional statement: Unexpected token",
+                    token,
+                }));
+            }
+        }
+    }
+    Ok(Node::Conditional(nodes))
 }
 
 fn parse_variables(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
@@ -428,6 +500,58 @@ mod tests {
         match parse(&mut tokens) {
             Ok(list) => {
                 assert_eq!(list, Node::Expression(vec![Node::Symbol("v".to_string())]));
+            }
+
+            Err(e) => {
+                panic!("{:?}", e)
+            }
+        }
+    }
+
+    #[test]
+    fn test_conditional() {
+        let code = r#"(if (> 1 2) (print "1") (print 2))"#.to_string();
+        let mut tokens = tokenise(code);
+
+        assert_eq!(
+            tokens.data,
+            vec![
+                Token::Conditional,
+                Token::LeftRoundBracket,
+                Token::Symbol(">".to_string()),
+                Token::Integer(1),
+                Token::Integer(2),
+                Token::RightRoundBracket,
+                Token::LeftRoundBracket,
+                Token::Symbol("print".to_string()),
+                Token::StringLiteral("1".to_string()),
+                Token::RightRoundBracket,
+                Token::LeftRoundBracket,
+                Token::Symbol("print".to_string()),
+                Token::Integer(2),
+                Token::RightRoundBracket,
+            ]
+        );
+
+        match parse(&mut tokens) {
+            Ok(list) => {
+                assert_eq!(
+                    list,
+                    Node::Conditional(vec![
+                        Node::Expression(vec![
+                            Node::Symbol(">".to_string()),
+                            Node::Integer(1),
+                            Node::Integer(2)
+                        ]),
+                        Node::Expression(vec![
+                            Node::Symbol("print".to_string()),
+                            Node::StringLiteral("1".to_string()),
+                        ]),
+                        Node::Expression(
+                            vec![Node::Symbol("print".to_string()), Node::Integer(2),]
+                        )
+                    ])
+                );
             }
 
             Err(e) => {
