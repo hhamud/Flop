@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.50"
 flop-frontend = { path = "../flop-frontend" }
+ariadne = { version = "0.3.0", features = ["auto-color"] }

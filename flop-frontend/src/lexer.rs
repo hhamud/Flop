@@ -1,9 +1,49 @@
-use std::{iter::Peekable, str::Chars};
-
 use crate::stack::Stack;
+
+use ariadne::Span;
+use std::{iter::Peekable, path::PathBuf, str::Chars};
+
+#[derive(Debug, PartialEq)]
+struct SourceInfo {
+    column: Line,
+    row: usize,
+    namespace: PathBuf,
+}
+
+#[derive(Debug, PartialEq)]
+struct Line {
+    start: usize,
+    end: usize,
+}
+
+impl Span for SourceInfo {
+    type SourceId = PathBuf;
+
+    fn source(&self) -> &PathBuf {
+        &self.namespace
+    }
+
+    fn start(&self) -> usize {
+        self.column.start
+    }
+
+    fn end(&self) -> usize {
+        self.column.end
+    }
+
+    fn len(&self) -> usize {
+        self.column.start - self.column.end
+    }
+
+    fn contains(&self, offset: usize) -> bool {
+        todo!()
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
+    Space,
+    Comment,
     Integer(i64),
     Symbol(String),
     StringLiteral(String),
@@ -110,6 +150,20 @@ pub fn tokenise(code: String) -> Stack<Token> {
             }
             ch if ch.is_whitespace() => {
                 chars.next();
+            }
+            ';' => {
+                if chars.clone().take(2).collect::<String>() == ";;" {
+                    // Skip the entire line
+                    while let Some(next_char) = chars.next() {
+                        if next_char == '\n' {
+                            break;
+                        }
+                    }
+                } else {
+                    // It's a single semicolon, treat it as a normal character
+                    chars.next();
+                    stack.push(Token::Symbol(";".to_string()));
+                }
             }
             _ => {
                 let word = extract_word(&mut chars);

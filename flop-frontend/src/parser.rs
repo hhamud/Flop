@@ -19,6 +19,7 @@ pub enum Node {
 }
 
 pub fn parse(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+    // rewrite this to avoid parsing issues
     let nodes = match tokens.data[0] {
         Token::FunctionDefinition => parse_function_definition(tokens)?,
         Token::VariableDefinition => parse_variables(tokens)?,

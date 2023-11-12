@@ -11,7 +11,7 @@ A hobby project bringing in lisp interoperability into the rust ecosystem
 - [x] Lists and Cons Cells
 - [x] Interactive REPL
 - [x] Read from File
-- [ ] Conditional Statements
+- [x] Conditional Statements
 - [ ] Looping and Iteration
 - [ ] Dynamic Typing
 - [ ] Basic Data Types
