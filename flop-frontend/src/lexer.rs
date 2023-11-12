@@ -4,19 +4,18 @@ use ariadne::Span;
 use std::{iter::Peekable, path::PathBuf, str::Chars};
 
 #[derive(Debug, PartialEq)]
-struct SourceInfo {
-    column: Line,
-    row: usize,
-    namespace: PathBuf,
-}
-
-#[derive(Debug, PartialEq)]
 struct Line {
     start: usize,
     end: usize,
 }
 
-impl Span for SourceInfo {
+impl Line {
+    fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
+
+impl Span for Token {
     type SourceId = PathBuf;
 
     fn source(&self) -> &PathBuf {
@@ -41,13 +40,13 @@ impl Span for SourceInfo {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum TokenKind {
     Space,
     Comment,
-    Integer(i64),
-    Symbol(String),
-    StringLiteral(String),
-    Bool(bool),
+    Integer,
+    Symbol,
+    StringLiteral,
+    Bool,
     Conditional,
     LeftRoundBracket,
     RightRoundBracket,
@@ -55,8 +54,43 @@ pub enum Token {
     RightSquareBracket,
     FunctionDefinition,
     VariableDefinition,
-    DocString(String),
+    DocString,
+    Error,
     Eof,
+}
+
+#[derive(Debug, PartialEq)]
+struct TokenError {
+    expected: &'static str,
+    found: &'static str,
+    token: Token,
+}
+
+#[derive(Debug, PartialEq)]
+struct Token {
+    pub token: String,
+    pub token_kind: TokenKind,
+    pub row: usize,
+    pub column: Line,
+    pub namespace: PathBuf,
+}
+
+impl Token {
+    fn new(
+        token: &str,
+        token_kind: TokenKind,
+        row: usize,
+        column: Line,
+        namespace: PathBuf,
+    ) -> Self {
+        Self {
+            token: token.to_string(),
+            token_kind,
+            row,
+            column,
+            namespace,
+        }
+    }
 }
 
 const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
@@ -76,10 +110,18 @@ fn peek_for_keywords(chars: &mut Peekable<Chars>) -> Option<&'static str> {
     None
 }
 
-fn extract_string_content(chars: &mut Peekable<Chars>, stack: &Stack<Token>) -> Token {
+fn extract_string_content(
+    chars: &mut Peekable<Chars>,
+    stack: &Stack<Token>,
+    row: usize,
+    start: usize,
+    namespace: PathBuf,
+) -> Result<Token, TokenError> {
     // check for docstrings
     let mut res = String::new();
+
     chars.next(); // skip the opening quote
+
     for inner_ch in chars.by_ref() {
         if inner_ch == '\"' {
             break;
@@ -87,65 +129,170 @@ fn extract_string_content(chars: &mut Peekable<Chars>, stack: &Stack<Token>) -> 
         res.push(inner_ch);
     }
 
-    if *stack.last().unwrap() != Token::RightSquareBracket {
-        Token::StringLiteral(res)
+    let col = Line::new(start, start + res.len());
+
+    // change this to a token to bubble up
+    if let Some(token) = stack.last() {
+        match token.token_kind {
+            TokenKind::RightSquareBracket => Ok(Token::new(
+                res.as_str(),
+                TokenKind::DocString,
+                row,
+                col,
+                namespace,
+            )),
+            _ => Ok(Token::new(
+                res.as_str(),
+                TokenKind::StringLiteral,
+                row,
+                col,
+                namespace,
+            )),
+        }
     } else {
-        Token::DocString(res)
+        // if no stack.last, stack is empty, (defn )
+        Err(TokenError {
+            expected: "String to be either doc strings or within an expression",
+            found: "Incomplete string definition",
+            token: Token::new(res.as_str(), TokenKind::Error, row, col, namespace),
+        })
     }
 }
 
-fn extract_word(chars: &mut Peekable<Chars>) -> String {
+fn extract_word(
+    chars: &mut Peekable<Chars>,
+    row: usize,
+    col: usize,
+    namespace: PathBuf,
+) -> Result<String, TokenError> {
     let mut word = String::new();
     while let Some(&next_char) = chars.peek() {
         if next_char.is_whitespace() || SPECIAL_CHARS.contains(&next_char) {
             break;
         }
-        word.push(chars.next().unwrap());
+
+        if let Some(ch) = chars.next() {
+            word.push(ch);
+        } else {
+            return Err(TokenError {
+                expected: "another word, check the stack",
+                found: "Word ended unexpectedly",
+                token: Token::new(
+                    word.as_str(),
+                    TokenKind::Error,
+                    row,
+                    Line::new(col, col + word.len()),
+                    namespace,
+                ),
+            });
+        }
     }
-    word
+    Ok(word)
 }
 
-pub fn tokenise(code: String) -> Stack<Token> {
+pub fn tokenise(code: String, namespace: PathBuf) -> Result<Stack<Token>, TokenError> {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
     // keep track of right and left brace pairs
     let mut counter = 0;
 
+    let mut row = 1;
+    let mut col = 0;
+
     while let Some(&ch) = chars.peek() {
+        col += 1;
+
         match ch {
+            '\n' => {
+                row += 1;
+                col = 0;
+                continue;
+            }
             '(' => {
                 if let Some(keyword) = peek_for_keywords(&mut chars) {
+                    col += keyword.len();
                     match keyword {
-                        "defn" => stack.push(Token::FunctionDefinition),
-                        "setq" => stack.push(Token::VariableDefinition),
-                        "if" => stack.push(Token::Conditional),
+                        "defn" => stack.push(Token::new(
+                            keyword,
+                            TokenKind::FunctionDefinition,
+                            row,
+                            Line::new(col - keyword.len(), col),
+                            namespace,
+                        )),
+                        "setq" => stack.push(Token::new(
+                            keyword,
+                            TokenKind::VariableDefinition,
+                            row,
+                            Line::new(col - keyword.len(), col),
+                            namespace,
+                        )),
+                        "setq" => stack.push(Token::new(
+                            keyword,
+                            TokenKind::VariableDefinition,
+                            row,
+                            Line::new(col - keyword.len(), col),
+                            namespace,
+                        )),
+                        "if" => stack.push(Token::new(
+                            keyword,
+                            TokenKind::Conditional,
+                            row,
+                            Line::new(col - keyword.len(), col),
+                            namespace,
+                        )),
                         _ => unreachable!(),
                     }
                 } else {
                     counter += 1;
-                    stack.push(Token::LeftRoundBracket);
+                    stack.push(Token::new(
+                        &ch.to_string(),
+                        TokenKind::LeftRoundBracket,
+                        row,
+                        Line::new(col - 1, col),
+                        namespace,
+                    ));
                     chars.next();
                 }
             }
+
             ')' => {
                 if counter >= 1 {
                     counter -= 1;
-                    stack.push(Token::RightRoundBracket);
+                    stack.push(Token::new(
+                        &ch.to_string(),
+                        TokenKind::RightRoundBracket,
+                        row,
+                        Line::new(col - 1, col),
+                        namespace,
+                    ));
                     chars.next();
                 } else {
                     chars.next();
                 }
             }
             '[' => {
-                stack.push(Token::LeftSquareBracket);
+                stack.push(Token::new(
+                    &ch.to_string(),
+                    TokenKind::LeftSquareBracket,
+                    row,
+                    Line::new(col - 1, col),
+                    namespace,
+                ));
                 chars.next();
             }
             ']' => {
-                stack.push(Token::RightSquareBracket);
+                stack.push(Token::new(
+                    &ch.to_string(),
+                    TokenKind::RightSquareBracket,
+                    row,
+                    Line::new(col - 1, col),
+                    namespace,
+                ));
                 chars.next();
             }
             '\"' => {
-                let string_content = extract_string_content(&mut chars, &stack);
+                let string_content =
+                    extract_string_content(&mut chars, &stack, row, col, namespace)?;
                 stack.push(string_content);
             }
             ch if ch.is_whitespace() => {
@@ -156,27 +303,47 @@ pub fn tokenise(code: String) -> Stack<Token> {
                     // Skip the entire line
                     while let Some(next_char) = chars.next() {
                         if next_char == '\n' {
+                            row += 1;
+                            col = 0;
                             break;
                         }
                     }
                 } else {
                     // It's a single semicolon, treat it as a normal character
                     chars.next();
-                    stack.push(Token::Symbol(";".to_string()));
+                    stack.push(Token::new(
+                        &ch.to_string(),
+                        TokenKind::Symbol,
+                        row,
+                        Line::new(col - 1, col),
+                        namespace,
+                    ));
                 }
             }
             _ => {
-                let word = extract_word(&mut chars);
+                let word = extract_word(&mut chars, row, col, namespace)?;
                 if let Ok(i) = word.parse::<i64>() {
-                    stack.push(Token::Integer(i));
+                    stack.push(Token::new(
+                        word.as_str(),
+                        TokenKind::Integer,
+                        row,
+                        Line::new(col, col + word.len()),
+                        namespace,
+                    ));
                 } else {
-                    stack.push(Token::Symbol(word));
+                    stack.push(Token::new(
+                        word.as_str(),
+                        TokenKind::Symbol,
+                        row,
+                        Line::new(col, col + word.len()),
+                        namespace,
+                    ));
                 }
             }
         }
     }
 
-    stack
+    Ok(stack)
 }
 
 #[cfg(test)]
@@ -186,110 +353,272 @@ mod tests {
     #[test]
     fn test_lexor() {
         let code = "(+ 1 2)".to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::LeftRoundBracket,
-                Token::Symbol("+".to_string()),
-                Token::Integer(1),
-                Token::Integer(2),
-                Token::RightRoundBracket,
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "+",
+                TokenKind::Symbol,
+                1,
+                Line::new(2, 2),
+                namespace.clone(),
+            ),
+            Token::new(
+                "1",
+                TokenKind::Integer,
+                1,
+                Line::new(4, 4),
+                namespace.clone(),
+            ),
+            Token::new("2", TokenKind::Integer, 1, Line::new(6, 6), namespace),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 
     #[test]
     fn test_lexor_list() {
         let code = "(+ [1 2])".to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::LeftRoundBracket,
-                Token::Symbol("+".to_string()),
-                Token::LeftSquareBracket,
-                Token::Integer(1),
-                Token::Integer(2),
-                Token::RightSquareBracket,
-                Token::RightRoundBracket,
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "+",
+                TokenKind::Symbol,
+                1,
+                Line::new(2, 2),
+                namespace.clone(),
+            ),
+            Token::new(
+                "[",
+                TokenKind::LeftSquareBracket,
+                1,
+                Line::new(4, 4),
+                namespace.clone(),
+            ),
+            Token::new(
+                "1",
+                TokenKind::Integer,
+                1,
+                Line::new(5, 5),
+                namespace.clone(),
+            ),
+            Token::new(
+                "2",
+                TokenKind::Integer,
+                1,
+                Line::new(7, 7),
+                namespace.clone(),
+            ),
+            Token::new(
+                "]",
+                TokenKind::RightSquareBracket,
+                1,
+                Line::new(8, 8),
+                namespace.clone(),
+            ),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 
     #[test]
     fn test_string() {
         let code = r#"(print "hi")"#.to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::LeftRoundBracket,
-                Token::Symbol("print".to_string()),
-                Token::StringLiteral("hi".to_string()),
-                Token::RightRoundBracket,
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "print",
+                TokenKind::Symbol,
+                1,
+                Line::new(2, 6),
+                namespace.clone(),
+            ),
+            Token::new(
+                "hi",
+                TokenKind::StringLiteral,
+                1,
+                Line::new(8, 9),
+                namespace.clone(),
+            ),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 
     #[test]
     fn test_variable() {
         let code = r#"(setq lmao "hi")"#.to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::VariableDefinition,
-                Token::Symbol("lmao".to_string()),
-                Token::StringLiteral("hi".to_string()),
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "setq",
+                TokenKind::VariableDefinition,
+                1,
+                Line::new(2, 5),
+                namespace.clone(),
+            ),
+            Token::new(
+                "lmao",
+                TokenKind::Symbol,
+                1,
+                Line::new(6, 9),
+                namespace.clone(),
+            ),
+            Token::new(
+                "hi",
+                TokenKind::StringLiteral,
+                1,
+                Line::new(11, 12),
+                namespace,
+            ),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 
     #[test]
     fn test_if() {
         let code = r#"(if (> 1 2) (print "1") (print 2))"#.to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::Conditional,
-                Token::LeftRoundBracket,
-                Token::Symbol(">".to_string()),
-                Token::Integer(1),
-                Token::Integer(2),
-                Token::RightRoundBracket,
-                Token::LeftRoundBracket,
-                Token::Symbol("print".to_string()),
-                Token::StringLiteral("1".to_string()),
-                Token::RightRoundBracket,
-                Token::LeftRoundBracket,
-                Token::Symbol("print".to_string()),
-                Token::Integer(2),
-                Token::RightRoundBracket,
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "if",
+                TokenKind::Conditional,
+                1,
+                Line::new(2, 3),
+                namespace.clone(),
+            ),
+            Token::new(
+                ">",
+                TokenKind::Symbol,
+                1,
+                Line::new(5, 5),
+                namespace.clone(),
+            ),
+            Token::new(
+                "1",
+                TokenKind::Integer,
+                1,
+                Line::new(7, 7),
+                namespace.clone(),
+            ),
+            Token::new(
+                "2",
+                TokenKind::Integer,
+                1,
+                Line::new(9, 9),
+                namespace.clone(),
+            ),
+            Token::new(
+                "print",
+                TokenKind::Symbol,
+                1,
+                Line::new(12, 16),
+                namespace.clone(),
+            ),
+            Token::new(
+                "1",
+                TokenKind::StringLiteral,
+                1,
+                Line::new(18, 19),
+                namespace.clone(),
+            ),
+            Token::new(
+                "print",
+                TokenKind::Symbol,
+                1,
+                Line::new(22, 26),
+                namespace.clone(),
+            ),
+            Token::new("2", TokenKind::Integer, 1, Line::new(28, 28), namespace),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 
     #[test]
     fn test_function_definition() {
         let code = "(defn add [x y] (+ x y))".to_string();
-        let tokens = tokenise(code);
-        assert_eq!(
-            tokens.data,
-            vec![
-                Token::FunctionDefinition,
-                Token::Symbol("add".to_string()),
-                Token::LeftSquareBracket,
-                Token::Symbol("x".to_string()),
-                Token::Symbol("y".to_string()),
-                Token::RightSquareBracket,
-                Token::LeftRoundBracket,
-                Token::Symbol("+".to_string()),
-                Token::Symbol("x".to_string()),
-                Token::Symbol("y".to_string()),
-                Token::RightRoundBracket,
-            ]
-        )
+        let namespace = PathBuf::from("test_namespace");
+        let tokens = tokenise(code, namespace.clone());
+        let expected = vec![
+            Token::new(
+                "defn",
+                TokenKind::FunctionDefinition,
+                1,
+                Line::new(2, 5),
+                namespace.clone(),
+            ),
+            Token::new(
+                "add",
+                TokenKind::Symbol,
+                1,
+                Line::new(7, 9),
+                namespace.clone(),
+            ),
+            Token::new(
+                "[",
+                TokenKind::LeftSquareBracket,
+                1,
+                Line::new(11, 11),
+                namespace.clone(),
+            ),
+            Token::new(
+                "x",
+                TokenKind::Symbol,
+                1,
+                Line::new(12, 12),
+                namespace.clone(),
+            ),
+            Token::new(
+                "y",
+                TokenKind::Symbol,
+                1,
+                Line::new(14, 14),
+                namespace.clone(),
+            ),
+            Token::new(
+                "]",
+                TokenKind::RightSquareBracket,
+                1,
+                Line::new(15, 15),
+                namespace.clone(),
+            ),
+            Token::new(
+                "(",
+                TokenKind::LeftRoundBracket,
+                1,
+                Line::new(17, 17),
+                namespace.clone(),
+            ),
+            Token::new(
+                "+",
+                TokenKind::Symbol,
+                1,
+                Line::new(18, 18),
+                namespace.clone(),
+            ),
+            Token::new(
+                "x",
+                TokenKind::Symbol,
+                1,
+                Line::new(20, 20),
+                namespace.clone(),
+            ),
+            Token::new(
+                "y",
+                TokenKind::Symbol,
+                1,
+                Line::new(22, 22),
+                namespace.clone(),
+            ),
+            Token::new(
+                ")",
+                TokenKind::RightRoundBracket,
+                1,
+                Line::new(23, 23),
+                namespace,
+            ),
+        ];
+        assert_eq!(tokens.unwrap().data, expected);
     }
 }

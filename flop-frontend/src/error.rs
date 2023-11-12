@@ -18,6 +18,17 @@ pub enum ParseError {
     },
 }
 
+pub enum LexerError {
+    /// Parsing error for tokens unable to be transformed into nodes
+    TokenError {
+        /// error message
+        message: &'static str,
+
+        /// token unabled to be transformed
+        token: Token,
+    },
+}
+
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

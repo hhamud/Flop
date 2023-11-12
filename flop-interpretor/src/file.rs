@@ -28,10 +28,13 @@ pub fn read_file(path: &Path) {
             Ok(EvalResult::Bool(n)) => println!("{:?}", n),
             Ok(EvalResult::Void) => {}
             Err(err) => {
+                // err.namespace
                 Report::build(ReportKind::Error, (), 1)
                     .with_code(3)
+                    //err.mesage
                     .with_message(err.to_string())
                     .with_label(
+                        //err.line
                         Label::new(0..3)
                             .with_message(err.to_string())
                             .with_color(Color::Red),
