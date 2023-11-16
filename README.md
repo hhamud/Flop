@@ -12,8 +12,9 @@ A hobby project bringing in lisp interoperability into the rust ecosystem
 - [x] Interactive REPL
 - [x] Read from File
 - [x] Conditional Statements
+- [x] Dynamic Typing
+- [ ] Namespaces
 - [ ] Looping and Iteration
-- [ ] Dynamic Typing
 - [ ] Basic Data Types
 - [ ] Hash Tables
 - [ ] Arrays and Vectors

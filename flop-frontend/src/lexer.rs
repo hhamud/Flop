@@ -1,97 +1,6 @@
 use crate::stack::Stack;
-
-use ariadne::Span;
+use crate::token::Token;
 use std::{iter::Peekable, path::PathBuf, str::Chars};
-
-#[derive(Debug, PartialEq)]
-struct Line {
-    start: usize,
-    end: usize,
-}
-
-impl Line {
-    fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
-    }
-}
-
-impl Span for Token {
-    type SourceId = PathBuf;
-
-    fn source(&self) -> &PathBuf {
-        &self.namespace
-    }
-
-    fn start(&self) -> usize {
-        self.column.start
-    }
-
-    fn end(&self) -> usize {
-        self.column.end
-    }
-
-    fn len(&self) -> usize {
-        self.column.start - self.column.end
-    }
-
-    fn contains(&self, offset: usize) -> bool {
-        todo!()
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum TokenKind {
-    Space,
-    Comment,
-    Integer,
-    Symbol,
-    StringLiteral,
-    Bool,
-    Conditional,
-    LeftRoundBracket,
-    RightRoundBracket,
-    LeftSquareBracket,
-    RightSquareBracket,
-    FunctionDefinition,
-    VariableDefinition,
-    DocString,
-    Error,
-    Eof,
-}
-
-#[derive(Debug, PartialEq)]
-struct TokenError {
-    expected: &'static str,
-    found: &'static str,
-    token: Token,
-}
-
-#[derive(Debug, PartialEq)]
-struct Token {
-    pub token: String,
-    pub token_kind: TokenKind,
-    pub row: usize,
-    pub column: Line,
-    pub namespace: PathBuf,
-}
-
-impl Token {
-    fn new(
-        token: &str,
-        token_kind: TokenKind,
-        row: usize,
-        column: Line,
-        namespace: PathBuf,
-    ) -> Self {
-        Self {
-            token: token.to_string(),
-            token_kind,
-            row,
-            column,
-            namespace,
-        }
-    }
-}
 
 const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
 
@@ -163,7 +72,7 @@ fn extract_word(
     chars: &mut Peekable<Chars>,
     row: usize,
     col: usize,
-    namespace: PathBuf,
+    namespace: &PathBuf,
 ) -> Result<String, TokenError> {
     let mut word = String::new();
     while let Some(&next_char) = chars.peek() {
@@ -240,7 +149,19 @@ pub fn tokenise(code: String, namespace: PathBuf) -> Result<Stack<Token>, TokenE
                             Line::new(col - keyword.len(), col),
                             namespace,
                         )),
-                        _ => unreachable!(),
+                        _ => {
+                            return Err(TokenError {
+                                expected: "Valid keyword",
+                                found: "Unexpected keyword",
+                                token: Token::new(
+                                    keyword,
+                                    TokenKind::Error,
+                                    row,
+                                    Line::new(col - keyword.len(), col),
+                                    namespace,
+                                ),
+                            });
+                        }
                     }
                 } else {
                     counter += 1;
@@ -321,7 +242,7 @@ pub fn tokenise(code: String, namespace: PathBuf) -> Result<Stack<Token>, TokenE
                 }
             }
             _ => {
-                let word = extract_word(&mut chars, row, col, namespace)?;
+                let word = extract_word(&mut chars, row, col, &namespace)?;
                 if let Ok(i) = word.parse::<i64>() {
                     stack.push(Token::new(
                         word.as_str(),
