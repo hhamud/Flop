@@ -1,5 +1,5 @@
-use crate::stack::Stack;
-use crate::token::Token;
+use crate::token::{Line, Token, TokenKind};
+use crate::{stack::Stack, token::TokenError};
 use std::{iter::Peekable, path::PathBuf, str::Chars};
 
 const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];

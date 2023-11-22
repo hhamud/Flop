@@ -8,7 +8,7 @@ pub struct Line {
 }
 
 impl Line {
-    fn new(start: usize, end: usize) -> Self {
+    pub fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
 }
@@ -74,7 +74,7 @@ pub struct Token {
 }
 
 impl Token {
-    fn new(
+    pub fn new(
         token: &str,
         token_kind: TokenKind,
         row: usize,
