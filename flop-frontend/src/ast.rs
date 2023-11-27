@@ -9,7 +9,7 @@ pub enum Node {
     FunctionDefinition {
         name: Token,
         parameters: Stack<Token>,
-        docstrings: Option<Token>,
+        docstrings: Token,
         body: Stack<Node>,
     },
 
@@ -26,15 +26,17 @@ pub enum Node {
 
     FunctionCall {
         name: Token,
-        arguments: Stack<Token>,
+        arguments: Stack<Node>,
     },
+
+    Literal(Token),
 
     VariableCall {
         name: Token,
     },
 
     List {
-        data: Stack<Token>,
+        data: Stack<Node>,
     },
 
     Documentation {
@@ -43,10 +45,7 @@ pub enum Node {
     },
 }
 
-fn parse_variable_definition(
-    tokens: &mut Stack<Token>,
-    nodes: &mut Stack<Node>,
-) -> Result<&'static mut Stack<Node>, ParseError> {
+fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     // pop Node::Expression
     let _exp = tokens.pop_front();
 
@@ -86,28 +85,23 @@ fn parse_variable_definition(
         assignment: value,
     };
 
-    nodes.push(var);
-
-    Ok(nodes)
+    Ok(var)
 }
 
-fn parse_list(
-    tokens: &mut Stack<Token>,
-    nodes: &mut Stack<Node>,
-) -> Result<&'static mut Stack<Node>, ParseError> {
-    let mut list_args: Stack<Token> = Stack::new();
+fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+    let mut list_args: Stack<Node> = Stack::new();
 
     let mut nested_level = 0;
 
     while let Some(list_arg) = tokens.pop_front() {
         match list_arg.token_kind {
-            TokenKind::Bool => list_args.push(list_arg),
-            TokenKind::Integer => list_args.push(list_arg),
-            TokenKind::StringLiteral => list_args.push(list_arg),
+            TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral => {
+                list_args.push(Node::Literal(list_arg))
+            }
             TokenKind::LeftSquareBracket => {
                 nested_level += 1;
-                let res = parse_list(tokens, nodes)?;
-                nodes.push(res.pop_front().unwrap());
+                let res = parse_list(tokens)?;
+                list_args.push(res)
             }
             TokenKind::RightSquareBracket => {
                 nested_level -= 1;
@@ -126,15 +120,10 @@ fn parse_list(
 
     let node = Node::List { data: list_args };
 
-    nodes.push(node);
-
-    Ok(nodes)
+    Ok(node)
 }
 
-fn parse_function_definition(
-    tokens: &mut Stack<Token>,
-    nodes: &mut Stack<Node>,
-) -> Result<Stack<Node>, ParseError> {
+fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     let name = tokens
         .pop_front()
         .ok_or(ParseError::StackError("No function name Token in Stack"))
@@ -148,11 +137,11 @@ fn parse_function_definition(
             }
         })?;
 
-    let mut function_args: Stack<Token> = Stack::new();
+    let mut parameters: Stack<Token> = Stack::new();
 
     while let Some(function_arg) = tokens.pop_front() {
         match function_arg.token_kind {
-            TokenKind::Symbol => function_args.push(function_arg),
+            TokenKind::Symbol => paramaters.push(function_arg),
             _ => {
                 return Err(ParseError::TokenError {
                     message: "Function Parameter must be a SYMBOL",
@@ -162,7 +151,7 @@ fn parse_function_definition(
         }
     }
 
-    let doc_string = tokens
+    let docstrings = tokens
         .pop_front()
         .ok_or(ParseError::StackError("No DocString Token in Stack"))
         .and_then(|doc_string| match name.token_kind {
@@ -176,7 +165,6 @@ fn parse_function_definition(
         })?;
 
     // function body
-    let mut count_brackets = 0;
     // Check if the first token is a LeftRoundBracket
     if let Some(first_token) = tokens.pop_front() {
         if first_token.token_kind != TokenKind::LeftRoundBracket {
@@ -185,59 +173,50 @@ fn parse_function_definition(
                 token: first_token,
             });
         }
+
         // Process the first LeftRoundBracket
-        let mut function_body: Stack<Token> = Stack::new();
-        function_body.push(first_token);
+        let mut body: Stack<Node> = Stack::new();
 
-        // Initialize with 1 since the first token is a LeftRoundBracket
-        let mut count_brackets = 1;
+        let res = parse_expression(tokens)?;
 
-        while let Some(fb) = tokens.pop_front() {
-            match fb.token_kind {
-                TokenKind::LeftRoundBracket => {
-                    count_brackets += 1;
-                    function_body.push(fb);
-                }
-                TokenKind::RightRoundBracket => {
-                    count_brackets -= 1;
-                    if count_brackets == 0 {
-                        break;
-                    }
-                    // Continue processing if there are more brackets
-                }
-                _ => {
-                    return Err(ParseError::TokenError {
-                        message: "Function Parameter must be a SYMBOL",
-                        token: fb,
-                    });
-                }
-            }
-        }
+        body.push(res);
 
-        // Check if all brackets are closed
-        if count_brackets != 0 {
-            return Err(ParseError::TokenError {
-                message: "Unclosed brackets in function body",
-                token: function_body.top().unwrap_or(first_token),
-            });
-        }
+        return Ok(Node::FunctionDefinition {
+            name,
+            parameters,
+            docstrings,
+            body,
+        });
     } else {
         // Handle the case when tokens.pop_front() returns None
         return Err(ParseError::StackError("Function body stack is empty"));
     }
 }
 
-fn parse_conditional(
-    tokens: &mut Stack<Token>,
-    nodes: &mut Stack<Node>,
-) -> Result<Stack<Node>, ParseError> {
+fn parse_conditional(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     todo!()
 }
 
-fn parse_expression(
-    tokens: &mut Stack<Token>,
-    nodes: &mut Stack<Node>,
-) -> Result<&'static mut Stack<Node>, ParseError> {
+fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+    let assignment = tokens
+        .pop_front()
+        .ok_or(ParseError::StackError("No variable symbol in Stack"))
+        .and_then(|name| match name.token_kind {
+            TokenKind::Symbol => Ok(name),
+            _ => {
+                return Err(ParseError::TokenError {
+                    message: "Variable call must be a SYMBOL",
+                    token: name,
+                })
+            }
+        })?;
+
+    let vc = Node::VariableCall { name: assignment };
+
+    Ok(vc)
+}
+
+fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     let mut nested_level = 0;
 
     let name = tokens
@@ -253,17 +232,19 @@ fn parse_expression(
             }
         })?;
 
-    let mut arg_vec: Stack<Token> = Stack::new();
+    let mut arg_vec: Stack<Node> = Stack::new();
 
     while let Some(token_arg) = tokens.pop_front() {
         match token_arg.token_kind {
             TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral => {
-                arg_vec.push(token_arg)
+                arg_vec.push(Node::Literal(token_arg))
             }
             TokenKind::LeftRoundBracket => {
                 nested_level += 1;
-                let res = parse(tokens)?;
-                // returns Stack<Node>
+                // recursive function call
+                // added to stack linearly
+                let res = parse_expression(tokens)?;
+                arg_vec.push(res)
             }
             TokenKind::RightRoundBracket => {
                 nested_level -= 1;
@@ -286,9 +267,7 @@ fn parse_expression(
         arguments: arg_vec,
     };
 
-    nodes.push(fc);
-
-    Ok(nodes)
+    Ok(fc)
 }
 
 pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
@@ -296,11 +275,12 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
 
     while let Some(token) = tokens.pop_front() {
         match token.token_kind {
-            TokenKind::VariableDefinition => parse_variable_definition(tokens, &mut nodes)?,
-            TokenKind::LeftSquareBracket => parse_list(tokens, &mut nodes)?,
-            TokenKind::FunctionDefinition => parse_function_definition(tokens, &mut nodes)?,
-            TokenKind::Conditional => parse_conditional(tokens, &mut nodes)?,
-            TokenKind::LeftRoundBracket => parse_expression(tokens, &mut nodes)?,
+            TokenKind::VariableDefinition => parse_variable_definition(tokens)?,
+            TokenKind::LeftSquareBracket => parse_list(tokens)?,
+            TokenKind::FunctionDefinition => parse_function_definition(tokens)?,
+            TokenKind::Conditional => parse_conditional(tokens)?,
+            TokenKind::LeftRoundBracket => parse_expression(tokens)?,
+            TokenKind::Symbol => parse_var_call(tokens)?,
 
             _ => {
                 return Err(ParseError::TokenError {
