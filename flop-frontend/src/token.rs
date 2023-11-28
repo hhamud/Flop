@@ -13,6 +13,33 @@ impl Line {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Token {
+    pub token: String,
+    pub token_kind: TokenKind,
+    pub row: usize,
+    pub column: Line,
+    pub namespace: PathBuf,
+}
+
+impl Token {
+    pub fn new(
+        token: &str,
+        token_kind: TokenKind,
+        row: usize,
+        column: Line,
+        namespace: &PathBuf,
+    ) -> Self {
+        Self {
+            token: token.to_string(),
+            token_kind,
+            row,
+            column,
+            namespace: namespace.clone(),
+        }
+    }
+}
+
 impl Span for Token {
     type SourceId = PathBuf;
 
@@ -62,31 +89,4 @@ pub struct TokenError {
     pub expected: &'static str,
     pub found: &'static str,
     pub token: Token,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Token {
-    pub token: String,
-    pub token_kind: TokenKind,
-    pub row: usize,
-    pub column: Line,
-    pub namespace: &'static PathBuf,
-}
-
-impl Token {
-    pub fn new(
-        token: &str,
-        token_kind: TokenKind,
-        row: usize,
-        column: Line,
-        namespace: PathBuf,
-    ) -> Self {
-        Self {
-            token: token.to_string(),
-            token_kind,
-            row,
-            column,
-            namespace: &namespace,
-        }
-    }
 }

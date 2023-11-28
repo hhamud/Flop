@@ -1,4 +1,4 @@
-use crate::lexer::Token;
+use crate::token::Token;
 
 #[derive(Debug)]
 pub enum ParseError {

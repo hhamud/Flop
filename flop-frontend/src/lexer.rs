@@ -1,4 +1,5 @@
-use crate::token::{Line, Token, TokenKind};
+use crate::token::Token;
+use crate::token::{Line, TokenKind};
 use crate::{stack::Stack, token::TokenError};
 use std::{iter::Peekable, path::PathBuf, str::Chars};
 
@@ -24,7 +25,7 @@ fn extract_string_content(
     stack: &Stack<Token>,
     row: usize,
     start: usize,
-    namespace: PathBuf,
+    namespace: &PathBuf,
 ) -> Result<Token, TokenError> {
     // check for docstrings
     let mut res = String::new();
@@ -99,7 +100,7 @@ fn extract_word(
     Ok(word)
 }
 
-pub fn tokenise(code: String, namespace: PathBuf) -> Result<Stack<Token>, TokenError> {
+pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, TokenError> {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
     // keep track of right and left brace pairs
@@ -213,7 +214,7 @@ pub fn tokenise(code: String, namespace: PathBuf) -> Result<Stack<Token>, TokenE
             }
             '\"' => {
                 let string_content =
-                    extract_string_content(&mut chars, &stack, row, col, namespace)?;
+                    extract_string_content(&mut chars, &stack, row, col, &namespace)?;
                 stack.push(string_content);
             }
             ch if ch.is_whitespace() => {

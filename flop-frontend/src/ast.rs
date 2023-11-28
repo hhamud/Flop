@@ -141,7 +141,7 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
 
     while let Some(function_arg) = tokens.pop_front() {
         match function_arg.token_kind {
-            TokenKind::Symbol => paramaters.push(function_arg),
+            TokenKind::Symbol => parameters.push(function_arg),
             _ => {
                 return Err(ParseError::TokenError {
                     message: "Function Parameter must be a SYMBOL",
@@ -159,7 +159,7 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             _ => {
                 return Err(ParseError::TokenError {
                     message: "Function name must be a symbol",
-                    token: name,
+                    token: doc_string,
                 })
             }
         })?;
@@ -288,7 +288,7 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
                     token,
                 });
             }
-        }
+        };
     }
 
     Ok(nodes)
