@@ -1,10 +1,10 @@
-use crate::ast::{FunctionDefinition, Variable};
+use flop_frontend::ast::{FunctionDefinition, VariableDefinition};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Environment {
     pub functions: HashMap<String, FunctionDefinition>,
-    pub variables: HashMap<String, Variable>,
+    pub variables: HashMap<String, VariableDefinition>,
 }
 
 impl Environment {

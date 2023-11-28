@@ -1,8 +1,9 @@
 use crate::env::Environment;
-use crate::eval::{evaluate, EvalResult};
+use crate::evaluation::evaluate;
 use ariadne::{Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
-use flop_frontend::{lexer::tokenise, parser::parse};
+use flop_frontend::{ast::parse, lexer::tokenise};
 use std::io::{self, Write};
+use std::path::PathBuf;
 
 pub fn repl() {
     println!("Starting REPL mode...");
@@ -35,30 +36,29 @@ pub fn repl() {
             break;
         }
 
-        let mut tokens = tokenise(input.clone());
+        // temp namespace
+        let mut namespace = PathBuf::new();
+        namespace.push("repl");
+
+        let mut tokens = tokenise(input.clone(), &namespace).unwrap();
 
         match parse(&mut tokens) {
-            Ok(ast) => match evaluate(&ast, &mut env) {
-                Ok(EvalResult::Integer(n)) => println!("{:?}", n),
-                Ok(EvalResult::StringLiteral(n)) => println!("{:?}", n),
-                Ok(EvalResult::List(n)) => println!("{:?}", n),
-                Ok(EvalResult::Bool(n)) => println!("{:?}", n),
-                Ok(EvalResult::Void) => {}
-                Err(err) => {
-                    Report::build(ReportKind::Error, (), 1)
-                        .with_code(3)
-                        .with_message(err.to_string())
-                        .with_label(
-                            Label::new(0..3)
-                                .with_message(err.to_string())
-                                .with_color(Color::Red),
-                        )
-                        .finish()
-                        .print(Source::from(input))
-                        .unwrap();
-                }
-            },
-            Err(e) => println!("Parsing error: {:?}", e),
+            Ok(mut ast) => evaluate(&mut ast, &mut env).unwrap(),
+
+            //TODO: add more detail to parsing errors
+            Err(err) => {
+                Report::build(ReportKind::Error, (), 1)
+                    .with_code(3)
+                    .with_message(err.to_string())
+                    .with_label(
+                        Label::new(0..3)
+                            .with_message(err.to_string())
+                            .with_color(Color::Red),
+                    )
+                    .finish()
+                    .print(Source::from(input))
+                    .unwrap();
+            }
         }
     }
 }

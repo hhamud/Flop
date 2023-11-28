@@ -5,44 +5,58 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct FunctionDefinition {
+    pub name: Token,
+    pub parameters: Stack<Token>,
+    pub docstrings: Token,
+    pub body: Stack<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Conditional {
+    pub condition: Stack<Node>,
+    pub true_expression: Stack<Node>,
+    pub false_expression: Stack<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariableDefinition {
+    pub name: Token,
+    pub assignment: Token,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionCall {
+    pub name: Token,
+    pub arguments: Stack<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariableCall {
+    pub name: Token,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct List {
+    pub data: Stack<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Documentation {
+    pub commentary: Token,
+    pub code: Option<Stack<Node>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Node {
-    FunctionDefinition {
-        name: Token,
-        parameters: Stack<Token>,
-        docstrings: Token,
-        body: Stack<Node>,
-    },
-
-    Conditional {
-        condition: Stack<Node>,
-        true_expression: Stack<Node>,
-        false_expression: Stack<Node>,
-    },
-
-    VariableDefinition {
-        name: Token,
-        assignment: Token,
-    },
-
-    FunctionCall {
-        name: Token,
-        arguments: Stack<Node>,
-    },
-
+    FunctionDefinition(FunctionDefinition),
+    Conditional(Conditional),
+    VariableDefinition(VariableDefinition),
+    FunctionCall(FunctionCall),
     Literal(Token),
-
-    VariableCall {
-        name: Token,
-    },
-
-    List {
-        data: Stack<Node>,
-    },
-
-    Documentation {
-        commentary: Token,
-        code: Option<Stack<Node>>,
-    },
+    VariableCall(VariableCall),
+    List(List),
+    Documentation(Documentation),
 }
 
 fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
@@ -80,12 +94,12 @@ fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
         }
     };
 
-    let var = Node::VariableDefinition {
+    let var = VariableDefinition {
         name: var_name,
         assignment: value,
     };
 
-    Ok(var)
+    Ok(Node::VariableDefinition(var))
 }
 
 fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
@@ -118,9 +132,9 @@ fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
         }
     }
 
-    let node = Node::List { data: list_args };
+    let node = List { data: list_args };
 
-    Ok(node)
+    Ok(Node::List(node))
 }
 
 fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
@@ -181,12 +195,13 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
 
         body.push(res);
 
-        return Ok(Node::FunctionDefinition {
+        let fd = FunctionDefinition {
             name,
             parameters,
             docstrings,
             body,
-        });
+        };
+        return Ok(Node::FunctionDefinition(fd));
     } else {
         // Handle the case when tokens.pop_front() returns None
         return Err(ParseError::StackError("Function body stack is empty"));
@@ -211,9 +226,9 @@ fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
             }
         })?;
 
-    let vc = Node::VariableCall { name: assignment };
+    let vc = VariableCall { name: assignment };
 
-    Ok(vc)
+    Ok(Node::VariableCall(vc))
 }
 
 fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
@@ -262,12 +277,12 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
         }
     }
 
-    let fc = Node::FunctionCall {
+    let fc = FunctionCall {
         name,
         arguments: arg_vec,
     };
 
-    Ok(fc)
+    Ok(Node::FunctionCall(fc))
 }
 
 pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {

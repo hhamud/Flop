@@ -1,14 +1,16 @@
-use crate::ast::{FunctionDefinition, Variable};
-use crate::env::Environment;
-use crate::error::EvalError;
-use flop_frontend::parser::Node;
-use std::ops::Deref;
+use crate::{
+    ast::{FunctionDefinition, Variable},
+    env::Environment,
+    error::EvalError,
+};
+
+use flop_frontend::ast::Node;
 
 #[derive(Debug)]
 pub enum EvalResult {
     Void,
     Integer(i64),
-    StringLiteral(String),
+    String(String),
     Bool(bool),
     List(Vec<EvalResult>),
 }
@@ -257,10 +259,9 @@ fn insert_function_definition(
     }
 }
 
-// refactor this and split up the functions
 pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
     match ast {
-        Node::Integer(n) => Ok(EvalResult::Integer(*n)),
+        Node::Literal(n) => Ok(EvalResult::Integer(*n)),
         Node::StringLiteral(s) => Ok(EvalResult::StringLiteral(s.to_string())),
         Node::Bool(b) => Ok(EvalResult::Bool(*b)),
         Node::List(l) => evaluate_list(l, env),
@@ -271,7 +272,9 @@ pub fn evaluate(ast: &Node, env: &mut Environment) -> Result<EvalResult, EvalErr
         Node::Conditional(nodes) => evaluate_conditional(nodes, env),
         _ => Err(EvalError::Node(ast.clone())),
     }
+
 }
+
 
 #[cfg(test)]
 mod tests {

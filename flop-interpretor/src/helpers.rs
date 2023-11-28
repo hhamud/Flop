@@ -1,9 +1,9 @@
 use crate::env::Environment;
 use crate::eval::{evaluate, EvalResult};
-use flop_frontend::{lexer::tokenise, parser::parse};
+use flop_frontend::{ast::parse, lexer::tokenise};
 
 pub fn eval_test(code: &str) -> Result<i64, String> {
-    let mut tokens = tokenise(code.to_string());
+    let mut tokens = tokenise(code.to_string(), "");
     let ast = parse(&mut tokens).unwrap();
     let mut env = Environment::new();
     let eval = evaluate(&ast, &mut env);

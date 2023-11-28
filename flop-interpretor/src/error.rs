@@ -1,4 +1,4 @@
-use flop_frontend::parser::Node;
+use flop_frontend::ast::Node;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
