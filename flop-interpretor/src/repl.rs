@@ -1,5 +1,5 @@
 use crate::env::Environment;
-use crate::evaluation::evaluate;
+use crate::evaluation::{evaluate, EvalResult};
 use ariadne::{Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
 use flop_frontend::{ast::parse, lexer::tokenise};
 use std::io::{self, Write};
@@ -22,14 +22,12 @@ pub fn repl() {
 
         if let Err(e) = io::stdout().flush() {
             println!("Error flushing stdout: {:?}", e);
-            continue;
         }
 
         let mut input = String::new();
 
         if let Err(e) = io::stdin().read_line(&mut input) {
             println!("Error reading line: {:?}", e);
-            continue;
         }
 
         if input.trim() == "exit" || input.trim() == "quit" {
@@ -43,7 +41,30 @@ pub fn repl() {
         let mut tokens = tokenise(input.clone(), &namespace).unwrap();
 
         match parse(&mut tokens) {
-            Ok(mut ast) => evaluate(&mut ast, &mut env).unwrap(),
+            Ok(mut ast) => match evaluate(&mut ast, &mut env) {
+                Ok(n) => match n {
+                    EvalResult::Void => {}
+                    EvalResult::Literal(n) => {
+                        println!("{:?}", n);
+                    }
+                    EvalResult::List(n) => {
+                        println!("{:?}", n);
+                    }
+                },
+                Err(err) => {
+                    Report::build(ReportKind::Error, (), 1)
+                        .with_code(3)
+                        .with_message(err.to_string())
+                        .with_label(
+                            Label::new(0..3)
+                                .with_message(err.to_string())
+                                .with_color(Color::Red),
+                        )
+                        .finish()
+                        .print(Source::from(input))
+                        .unwrap();
+                }
+            },
 
             //TODO: add more detail to parsing errors
             Err(err) => {

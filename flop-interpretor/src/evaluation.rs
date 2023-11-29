@@ -1,4 +1,7 @@
-use std::{collections::HashMap, error::Error};
+use std::{
+    collections::{HashMap, VecDeque},
+    error::Error,
+};
 
 use crate::env::Environment;
 use flop_frontend::{
@@ -10,12 +13,10 @@ use flop_frontend::{
 pub enum EvalResult {
     Literal(Token),
     Void,
-    List(Vec<EvalResult>),
+    List(Stack<Node>),
 }
 
-pub enum EvalError {
-
-}
+pub enum EvalError {}
 
 fn operation(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
     let mut oper: i64 = match &fc.arguments.data[0] {
@@ -38,7 +39,18 @@ fn operation(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
         }
     }
 
-    Ok(EvalResult::Literal(oper))
+    let new_token: Token = match &fc.arguments.data[0] {
+        Node::Literal(token) => Token::new(
+            &oper.to_string(),
+            token.token_kind.clone(),
+            token.row,
+            token.column.clone(),
+            &token.namespace,
+        ),
+        _ => todo!(),
+    };
+
+    Ok(EvalResult::Literal(new_token))
 }
 
 pub fn evaluate(
@@ -104,19 +116,21 @@ pub fn evaluate(
             }
             Node::Literal(token) => {
                 // handles integers, bools and strings
-                println!("{:?}", token);
+                return Ok(EvalResult::Literal(token));
             }
             Node::VariableCall(vc) => {
                 if let Some(variable) = env.variables.get(&vc.name.token) {
-                    println!("{:?}", variable.assignment.token);
+                    return Ok(EvalResult::Literal(variable.assignment.clone()));
                 }
             }
             Node::List(ls) => {
-                println!("{:?}", ls.data);
+                return Ok(EvalResult::List(ls.data));
             }
             Node::Documentation(_) => {
                 todo!();
             }
         }
     }
+
+    return Err(format!("Failed to pop off").into());
 }
