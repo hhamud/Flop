@@ -1,4 +1,6 @@
-use crate::token::Token;
+use std::ops::Range;
+
+use crate::token::{Token, TokenError};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -15,6 +17,29 @@ pub enum ParseError {
     },
 }
 
+impl ParseError {
+    pub fn span(&self) -> Token {
+        match self {
+            ParseError::TokenError { message, token } => token.clone(),
+            ParseError::StackError(_) => todo!(),
+        }
+    }
+
+    pub fn start(&self) -> usize {
+        match self {
+            ParseError::TokenError { message, token } => token.column.start,
+            ParseError::StackError(_) => todo!(),
+        }
+    }
+
+    pub fn reason(&self) -> String {
+        match self {
+            ParseError::TokenError { message, token } => message.to_string(),
+            ParseError::StackError(_) => todo!(),
+        }
+    }
+}
+
 pub enum LexerError {
     /// Parsing error for tokens unable to be transformed into nodes
     TokenError {
@@ -24,6 +49,17 @@ pub enum LexerError {
         /// token unabled to be transformed
         token: Token,
     },
+}
+
+impl LexerError {
+    pub fn span(&self) -> Range<usize> {
+        match self {
+            LexerError::TokenError { message, token } => {
+                let span = token.column.start..token.column.end;
+                span
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for ParseError {

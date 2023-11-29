@@ -290,12 +290,12 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
 
     while let Some(token) = tokens.pop_front() {
         match token.token_kind {
-            TokenKind::VariableDefinition => parse_variable_definition(tokens)?,
-            TokenKind::LeftSquareBracket => parse_list(tokens)?,
-            TokenKind::FunctionDefinition => parse_function_definition(tokens)?,
-            TokenKind::Conditional => parse_conditional(tokens)?,
-            TokenKind::LeftRoundBracket => parse_expression(tokens)?,
-            TokenKind::Symbol => parse_var_call(tokens)?,
+            TokenKind::VariableDefinition => nodes.push(parse_variable_definition(tokens)?),
+            TokenKind::LeftSquareBracket => nodes.push(parse_list(tokens)?),
+            TokenKind::FunctionDefinition => nodes.push(parse_function_definition(tokens)?),
+            TokenKind::Conditional => nodes.push(parse_conditional(tokens)?),
+            TokenKind::LeftRoundBracket => nodes.push(parse_expression(tokens)?),
+            TokenKind::Symbol => nodes.push(parse_var_call(tokens)?),
 
             _ => {
                 return Err(ParseError::TokenError {

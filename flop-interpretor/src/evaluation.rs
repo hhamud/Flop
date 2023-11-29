@@ -16,8 +16,6 @@ pub enum EvalResult {
     List(Stack<Node>),
 }
 
-pub enum EvalError {}
-
 fn operation(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
     let mut oper: i64 = match &fc.arguments.data[0] {
         Node::Literal(token) => token.token.parse::<i64>()?,
@@ -111,7 +109,7 @@ pub fn evaluate(
                 env.variables.insert(vd.name.token.clone(), vd);
                 return Ok(EvalResult::Void);
             }
-            Node::Conditional(cd) => {
+            Node::Conditional(_) => {
                 todo!()
             }
             Node::Literal(token) => {

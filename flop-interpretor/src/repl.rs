@@ -68,12 +68,12 @@ pub fn repl() {
 
             //TODO: add more detail to parsing errors
             Err(err) => {
-                Report::build(ReportKind::Error, (), 1)
+                Report::build(ReportKind::Error, (), err.start())
                     .with_code(3)
-                    .with_message(err.to_string())
+                    .with_message(err.reason())
                     .with_label(
-                        Label::new(0..3)
-                            .with_message(err.to_string())
+                        Label::new(err.span())
+                            .with_message(err.reason())
                             .with_color(Color::Red),
                     )
                     .finish()

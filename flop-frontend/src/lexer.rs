@@ -114,11 +114,11 @@ pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, Token
 
         match ch {
             '\n' => {
+                row += 1;
+                col = 0;
                 if namespace.to_string_lossy().contains("repl") {
                     return Ok(stack);
                 } else {
-                    row += 1;
-                    col = 0;
                     continue;
                 }
             }

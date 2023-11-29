@@ -1,5 +1,5 @@
 use ariadne::Span;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Line {
@@ -41,9 +41,9 @@ impl Token {
 }
 
 impl Span for Token {
-    type SourceId = PathBuf;
+    type SourceId = Path;
 
-    fn source(&self) -> &PathBuf {
+    fn source(&self) -> &Path {
         &self.namespace
     }
 
