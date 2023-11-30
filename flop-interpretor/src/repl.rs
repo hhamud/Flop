@@ -1,19 +1,11 @@
 use crate::env::Environment;
 use crate::evaluation::{evaluate, EvalResult};
-use ariadne::{Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
 use flop_frontend::{ast::parse, lexer::tokenise};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
 pub fn repl() {
     println!("Starting REPL mode...");
-
-    let mut colors = ColorGenerator::new();
-
-    // Generate & choose some colours for each of our elements
-    let a = colors.next();
-    let b = colors.next();
-    let out = Color::Fixed(81);
 
     let mut env = Environment::new();
 
@@ -52,33 +44,13 @@ pub fn repl() {
                     }
                 },
                 Err(err) => {
-                    Report::build(ReportKind::Error, (), 1)
-                        .with_code(3)
-                        .with_message(err.to_string())
-                        .with_label(
-                            Label::new(0..3)
-                                .with_message(err.to_string())
-                                .with_color(Color::Red),
-                        )
-                        .finish()
-                        .print(Source::from(input))
-                        .unwrap();
+                    eprintln!("{:?}", err)
                 }
             },
 
             //TODO: add more detail to parsing errors
             Err(err) => {
-                Report::build(ReportKind::Error, (), err.start())
-                    .with_code(3)
-                    .with_message(err.reason())
-                    .with_label(
-                        Label::new(err.span())
-                            .with_message(err.reason())
-                            .with_color(Color::Red),
-                    )
-                    .finish()
-                    .print(Source::from(input))
-                    .unwrap();
+                eprintln!("{:?}", err)
             }
         }
     }

@@ -1,7 +1,6 @@
 use crate::env::Environment;
 use crate::eval::{evaluate, EvalResult};
 
-use ariadne::{Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
 use flop_frontend::{lexer::tokenise, parser::parse};
 use std::fs::File;
 use std::io::Read;
@@ -28,41 +27,11 @@ pub fn read_file(path: &Path) {
             Ok(EvalResult::Bool(n)) => println!("{:?}", n),
             Ok(EvalResult::Void) => {}
             Err(err) => {
+
                 // err.namespace
-                Report::build(ReportKind::Error, (), 1)
-                    .with_code(3)
-                    //err.mesage
-                    .with_message(err.to_string())
-                    .with_label(
-                        //err.line
-                        Label::new(0..3)
-                            .with_message(err.to_string())
-                            .with_color(Color::Red),
-                    )
-                    .finish()
-                    .print(Source::from(content))
-                    .unwrap();
             }
         },
         Err(err) => {
-            Report::build(
-                ReportKind::Error,
-                (
-                    path.file_name().unwrap().to_str().unwrap().to_string(),
-                    2..3,
-                ),
-                1,
-            )
-            .with_code(3)
-            .with_message(err.to_string())
-            .with_label(
-                Label::new(0..3)
-                    .with_message(err.to_string())
-                    .with_color(Color::Red),
-            )
-            .finish()
-            .print(Source::from(content))
-            .unwrap();
         }
     }
 }

@@ -10,7 +10,6 @@ pub enum Operation {
     LessThanOrEqual,
 }
 
-
 impl Operation {
     pub fn apply(&self, a: i64, b: i64) -> i64 {
         match self {
@@ -22,7 +21,7 @@ impl Operation {
             Operation::GreaterThan => (a > b) as i64,
             Operation::GreaterThanOrEqual => (a >= b) as i64,
             Operation::LessThan => (a < b) as i64,
-            Operation::LessThanOrEqual => (a <= b) as i64
+            Operation::LessThanOrEqual => (a <= b) as i64,
         }
     }
 }
@@ -45,4 +44,3 @@ impl TryFrom<&str> for Operation {
         }
     }
 }
-

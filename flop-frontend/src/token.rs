@@ -1,4 +1,3 @@
-use ariadne::Span;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -40,30 +39,6 @@ impl Token {
     }
 }
 
-impl Span for Token {
-    type SourceId = Path;
-
-    fn source(&self) -> &Path {
-        &self.namespace
-    }
-
-    fn start(&self) -> usize {
-        self.column.start
-    }
-
-    fn end(&self) -> usize {
-        self.column.end
-    }
-
-    fn len(&self) -> usize {
-        self.column.start - self.column.end
-    }
-
-    fn contains(&self, offset: usize) -> bool {
-        todo!()
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     Space,
@@ -82,11 +57,4 @@ pub enum TokenKind {
     DocString,
     Error,
     Eof,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct TokenError {
-    pub expected: &'static str,
-    pub found: &'static str,
-    pub token: Token,
 }
