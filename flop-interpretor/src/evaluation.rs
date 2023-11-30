@@ -1,9 +1,6 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    error::Error,
-};
+use std::{collections::HashMap, error::Error};
 
-use crate::env::Environment;
+use crate::{env::Environment, operation::Operation};
 use flop_frontend::{
     ast::{FunctionCall, Node, VariableDefinition},
     stack::Stack,
@@ -16,25 +13,23 @@ pub enum EvalResult {
     List(Stack<Node>),
 }
 
-fn operation(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
-    let mut oper: i64 = match &fc.arguments.data[0] {
-        Node::Literal(token) => token.token.parse::<i64>()?,
-        _ => todo!(),
-    };
+fn parse_literal(node: &Node) -> Result<i64, Box<dyn Error>> {
+    if let Node::Literal(token) = node {
+        Ok(token.token.parse::<i64>()?)
+    } else {
+        Err("Node is not a literal".into())
+    }
+}
 
-    for operand in fc.arguments.data.range(1..) {
-        let oper_val: i64 = match operand {
-            Node::Literal(token) => token.token.parse::<i64>()?,
-            _ => todo!(),
-        };
+fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
+    let mut oper = parse_literal(&fc.arguments.data[0])?;
 
-        match fc.name.token.as_str() {
-            "+" => oper += oper_val,
-            "-" => oper -= oper_val,
-            "/" => oper /= oper_val,
-            "*" => oper *= oper_val,
-            _ => return Err(format!("lmao how did you break this, nice find more").into()),
-        }
+    let operation = Operation::try_from(fc.name.token.as_str())?;
+
+    for operand in fc.arguments.data.iter().skip(1) {
+        let oper_val = parse_literal(operand)?;
+
+        oper = operation.apply(oper, oper_val);
     }
 
     let new_token: Token = match &fc.arguments.data[0] {
@@ -45,7 +40,7 @@ fn operation(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
             token.column.clone(),
             &token.namespace,
         ),
-        _ => todo!(),
+        _ => unreachable!(),
     };
 
     Ok(EvalResult::Literal(new_token))
@@ -98,7 +93,7 @@ pub fn evaluate(
                     return evaluate(&mut body, &mut local_env);
                 } else {
                     // could be a math operation
-                    return operation(fc);
+                    return evaluate_math(fc);
                 }
             }
             Node::FunctionDefinition(fd) => {
