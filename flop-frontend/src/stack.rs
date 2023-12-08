@@ -1,4 +1,5 @@
-use std::collections::VecDeque;
+use core::fmt;
+use std::{collections::VecDeque, fmt::Display};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Stack<K> {
@@ -30,5 +31,20 @@ impl<K> Stack<K> {
 
     pub fn pop_front(&mut self) -> Option<K> {
         self.data.pop_front()
+    }
+}
+
+impl<K: fmt::Display> fmt::Display for Stack<K> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut elements = self
+            .data
+            .iter()
+            .map(|k| k.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        if elements.is_empty() {
+            elements = String::from("Empty Stack");
+        }
+        write!(f, "[{}]", elements)
     }
 }

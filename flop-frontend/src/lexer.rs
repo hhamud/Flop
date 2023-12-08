@@ -65,8 +65,12 @@ fn extract_string_content(
         }
     } else {
         // if no stack.last, stack is empty, (defn )
-        Err(LexerError::IncompleteStringError(SourceSpan::from(
-            Token::new(res.as_str(), TokenKind::Error, row, col, namespace),
+        Err(LexerError::IncompleteStringError(Token::new(
+            res.as_str(),
+            TokenKind::Error,
+            row,
+            col,
+            namespace,
         )))
     }
 }
@@ -86,13 +90,13 @@ fn extract_word(
         if let Some(ch) = chars.next() {
             word.push(ch);
         } else {
-            return Err(LexerError::ExtractWordError(SourceSpan::from(Token::new(
+            return Err(LexerError::ExtractWordError(Token::new(
                 word.as_str(),
                 TokenKind::Error,
                 row,
                 Line::new(col, col + word.len()),
                 namespace,
-            ))));
+            )));
         }
     }
     Ok(word)
@@ -146,13 +150,13 @@ pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, Lexer
                             namespace,
                         )),
                         _ => {
-                            return Err(LexerError::KeywordError(SourceSpan::from(Token::new(
+                            return Err(LexerError::KeywordError(Token::new(
                                 keyword,
                                 TokenKind::Error,
                                 row,
                                 Line::new(col - keyword.len(), col),
                                 namespace,
-                            ))))
+                            )))
                         }
                     }
                 } else {

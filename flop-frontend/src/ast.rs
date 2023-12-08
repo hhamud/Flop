@@ -59,39 +59,31 @@ pub enum Node {
     Documentation(Documentation),
 }
 
-fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     // pop Node::Expression
     let _exp = tokens.pop_front();
 
-    let var_token = tokens.pop_front().ok_or(ParseError::StackError(
-        "Failed to pop stack for variable name",
-    ))?;
+    let var_token = tokens.pop_front().ok_or(ParseError::StackError {
+        name: "variable name",
+        stack: tokens.clone(),
+    })?;
 
     let var_name = match var_token.token_kind {
         TokenKind::Symbol => var_token,
-        _ => {
-            return Err(ParseError::TokenError {
-                message: "Variable Definition: Expected a variable name",
-                token: var_token,
-            })
-        }
+        _ => return Err(ParseError::VariableDefinition(var_token)),
     };
 
-    let value_token = tokens.pop_front().ok_or(ParseError::StackError(
-        "Failed to pop stack for variable reference",
-    ))?;
+    let value_token = tokens.pop_front().ok_or(ParseError::StackError {
+        name: "Failed to pop stack for variable reference",
+        stack: tokens.clone(),
+    })?;
 
     let value = match value_token.token_kind {
         TokenKind::Integer => value_token,
         TokenKind::Bool => value_token,
         TokenKind::StringLiteral => value_token,
         //TODO: Add ability to assign expressions to variables
-        _ => {
-            return Err(ParseError::TokenError {
-                message: "Variable assignment: Expected a variable value",
-                token: value_token,
-            })
-        }
+        _ => return Err(ParseError::VariableAssignment(value_token)),
     };
 
     let var = VariableDefinition {
@@ -102,7 +94,7 @@ fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
     Ok(Node::VariableDefinition(var))
 }
 
-fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     let mut list_args: Stack<Node> = Stack::new();
 
     let mut nested_level = 0;
@@ -123,12 +115,7 @@ fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
                     break;
                 }
             }
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "LIST can only contain NUMBER, STRING, BOOLEAN OR another LIST",
-                    token: list_arg,
-                })
-            }
+            _ => return Err(ParseError::ListDefinition(list_arg)),
         }
     }
 
@@ -137,18 +124,16 @@ fn parse_list(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     Ok(Node::List(node))
 }
 
-fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     let name = tokens
         .pop_front()
-        .ok_or(ParseError::StackError("No function name Token in Stack"))
+        .ok_or(ParseError::StackError {
+            name: "No function name Token in Stack",
+            stack: tokens.clone(),
+        })
         .and_then(|name| match name.token_kind {
             TokenKind::Symbol => Ok(name),
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Function name must be a symbol",
-                    token: name,
-                })
-            }
+            _ => return Err(ParseError::FunctionName(name)),
         })?;
 
     let mut parameters: Stack<Token> = Stack::new();
@@ -156,36 +141,26 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
     while let Some(function_arg) = tokens.pop_front() {
         match function_arg.token_kind {
             TokenKind::Symbol => parameters.push(function_arg),
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Function Parameter must be a SYMBOL",
-                    token: function_arg,
-                })
-            }
+            _ => return Err(ParseError::FunctionParameter(function_arg)),
         }
     }
 
     let docstrings = tokens
         .pop_front()
-        .ok_or(ParseError::StackError("No DocString Token in Stack"))
+        .ok_or(ParseError::StackError {
+            name: "No DocString Token in Stack",
+            stack: tokens.clone(),
+        })
         .and_then(|doc_string| match name.token_kind {
             TokenKind::StringLiteral => Ok(doc_string),
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Function name must be a symbol",
-                    token: doc_string,
-                })
-            }
+            _ => return Err(ParseError::FunctionDocstring(doc_string)),
         })?;
 
     // function body
     // Check if the first token is a LeftRoundBracket
     if let Some(first_token) = tokens.pop_front() {
         if first_token.token_kind != TokenKind::LeftRoundBracket {
-            return Err(ParseError::TokenError {
-                message: "Function body must start with a LeftRoundBracket",
-                token: first_token,
-            });
+            return Err(ParseError::FunctionBody(first_token));
         }
 
         // Process the first LeftRoundBracket
@@ -204,26 +179,27 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
         return Ok(Node::FunctionDefinition(fd));
     } else {
         // Handle the case when tokens.pop_front() returns None
-        return Err(ParseError::StackError("Function body stack is empty"));
+        return Err(ParseError::StackError {
+            name: "Function body stack is empty",
+            stack: tokens.clone(),
+        });
     }
 }
 
-fn parse_conditional(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_conditional(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     todo!()
 }
 
-fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     let assignment = tokens
         .pop_front()
-        .ok_or(ParseError::StackError("No variable symbol in Stack"))
+        .ok_or(ParseError::StackError {
+            name: "No variable symbol in Stack",
+            stack: tokens.clone(),
+        })
         .and_then(|name| match name.token_kind {
             TokenKind::Symbol => Ok(name),
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Variable call must be a SYMBOL",
-                    token: name,
-                })
-            }
+            _ => return Err(ParseError::VariableAssignment(name)),
         })?;
 
     let vc = VariableCall { name: assignment };
@@ -231,20 +207,18 @@ fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     Ok(Node::VariableCall(vc))
 }
 
-fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
+fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     let mut nested_level = 0;
 
     let name = tokens
         .pop_front()
-        .ok_or(ParseError::StackError("No expression symbol in Stack"))
+        .ok_or(ParseError::StackError {
+            name: "No expression symbol in Stack",
+            stack: tokens.clone(),
+        })
         .and_then(|name| match name.token_kind {
             TokenKind::Symbol => Ok(name),
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Expression name must be a symbol",
-                    token: name,
-                })
-            }
+            _ => return Err(ParseError::FunctionCallName(name)),
         })?;
 
     let mut arg_vec: Stack<Node> = Stack::new();
@@ -268,12 +242,7 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
                     break;
                 }
             }
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Function argument is not of the correct type: NUMBER, STRING, BOOL",
-                    token: token_arg,
-                })
-            }
+            _ => return Err(ParseError::FunctionCallArg(token_arg)),
         }
     }
 
@@ -285,7 +254,7 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError> {
     Ok(Node::FunctionCall(fc))
 }
 
-pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
+pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError<Token>> {
     let mut nodes: Stack<Node> = Stack::new();
 
     while let Some(token) = tokens.pop_front() {
@@ -297,12 +266,7 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError> {
             TokenKind::LeftRoundBracket => nodes.push(parse_expression(tokens)?),
             TokenKind::Symbol => nodes.push(parse_var_call(tokens)?),
 
-            _ => {
-                return Err(ParseError::TokenError {
-                    message: "Wrong token",
-                    token,
-                });
-            }
+            _ => return Err(ParseError::ParseError(token)),
         };
     }
 
