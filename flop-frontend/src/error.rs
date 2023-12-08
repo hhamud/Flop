@@ -1,37 +1,41 @@
-use crate::token::Token;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
 /// Lexer error for tokens unable to be transformed into tokens
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, PartialEq, Error, Diagnostic)]
 pub enum LexerError {
     /// Incomplete String error
-    #[error("")]
-    IncompleteStringError(ExpectedError),
+    #[error("Incomplete String error")]
+    #[label("String to be either doc strings or within an expression")]
+    IncompleteStringError(SourceSpan),
 
     /// syntax keyword error
-    #[error("")]
-    KeywordError(ExpectedError),
+    #[error("Unexpected keyword")]
+    #[label("Valid keyword needed")]
+    KeywordError(SourceSpan),
 
     /// Incomplete String error
-    #[error("")]
-    ExtractWordError(ExpectedError),
+    #[error("Word ended unexpectedly")]
+    #[label("Found another word, check the stack")]
+    ExtractWordError(SourceSpan),
 }
 
 #[derive(Debug, PartialEq, Error, Diagnostic)]
 pub enum ParseError {
     /// Parsing error for tokens left unprocessed in stack
     #[error("Stack Error occured")]
-    StackError(ExpectedError),
+    #[label("Please ")]
+    StackError(SourceSpan),
 
-    #[error("Stack Error occured")]
     /// Parsing error for tokens unable to be transformed into nodes
-    TokenError(ExpectedError),
+    #[error("Token Error occured")]
+    #[label("Please ")]
+    TokenError(SourceSpan),
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ExpectedError {
-    pub expected: String,
-    pub found: String,
-    pub token: Token,
-}
+//error
+//found (x happened)
+// expected (this is how x should be fixed)
+// token (what x is)
+// should show exactly what is happening in the stack<lexer/Node>
+// should show exactly what is happening in the stack

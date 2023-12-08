@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use miette::{SourceOffset, SourceSpan};
+use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Line {
@@ -19,6 +20,18 @@ pub struct Token {
     pub row: usize,
     pub column: Line,
     pub namespace: PathBuf,
+}
+
+impl From<Token> for SourceSpan {
+    fn from(value: Token) -> Self {
+        //TODO: check the length sourceoffset implementation
+        // maybe this just means the length of the code
+        let source = value.namespace.to_str().unwrap();
+        let offset = SourceOffset::from_location(source, value.row, value.column.start);
+        let length = SourceOffset::from_location(source, value.row, value.column.start);
+
+        SourceSpan::new(length, offset)
+    }
 }
 
 impl Token {

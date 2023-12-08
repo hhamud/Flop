@@ -1,6 +1,10 @@
-use crate::token::Token;
-use crate::token::{Line, TokenKind};
-use crate::{stack::Stack, token::TokenError};
+use miette::SourceSpan;
+
+use crate::{
+    error::LexerError,
+    stack::Stack,
+    token::{Line, Token, TokenKind},
+};
 use std::{iter::Peekable, path::PathBuf, str::Chars};
 
 const SPECIAL_CHARS: [char; 5] = ['(', ')', '[', ']', '\"'];
@@ -26,7 +30,7 @@ fn extract_string_content(
     row: usize,
     start: usize,
     namespace: &PathBuf,
-) -> Result<Token, TokenError> {
+) -> Result<Token, LexerError> {
     // check for docstrings
     let mut res = String::new();
 
@@ -61,11 +65,9 @@ fn extract_string_content(
         }
     } else {
         // if no stack.last, stack is empty, (defn )
-        Err(TokenError {
-            expected: "String to be either doc strings or within an expression",
-            found: "Incomplete string definition",
-            token: Token::new(res.as_str(), TokenKind::Error, row, col, namespace),
-        })
+        Err(LexerError::IncompleteStringError(SourceSpan::from(
+            Token::new(res.as_str(), TokenKind::Error, row, col, namespace),
+        )))
     }
 }
 
@@ -74,7 +76,7 @@ fn extract_word(
     row: usize,
     col: usize,
     namespace: &PathBuf,
-) -> Result<String, TokenError> {
+) -> Result<String, LexerError> {
     let mut word = String::new();
     while let Some(&next_char) = chars.peek() {
         if next_char.is_whitespace() || SPECIAL_CHARS.contains(&next_char) {
@@ -84,23 +86,19 @@ fn extract_word(
         if let Some(ch) = chars.next() {
             word.push(ch);
         } else {
-            return Err(TokenError {
-                expected: "another word, check the stack",
-                found: "Word ended unexpectedly",
-                token: Token::new(
-                    word.as_str(),
-                    TokenKind::Error,
-                    row,
-                    Line::new(col, col + word.len()),
-                    namespace,
-                ),
-            });
+            return Err(LexerError::ExtractWordError(SourceSpan::from(Token::new(
+                word.as_str(),
+                TokenKind::Error,
+                row,
+                Line::new(col, col + word.len()),
+                namespace,
+            ))));
         }
     }
     Ok(word)
 }
 
-pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, TokenError> {
+pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, LexerError> {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
     // keep track of right and left brace pairs
@@ -148,17 +146,13 @@ pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, Token
                             namespace,
                         )),
                         _ => {
-                            return Err(TokenError {
-                                expected: "Valid keyword",
-                                found: "Unexpected keyword",
-                                token: Token::new(
-                                    keyword,
-                                    TokenKind::Error,
-                                    row,
-                                    Line::new(col - keyword.len(), col),
-                                    namespace,
-                                ),
-                            });
+                            return Err(LexerError::KeywordError(SourceSpan::from(Token::new(
+                                keyword,
+                                TokenKind::Error,
+                                row,
+                                Line::new(col - keyword.len(), col),
+                                namespace,
+                            ))))
                         }
                     }
                 } else {
