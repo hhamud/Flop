@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.50"
 flop-frontend = { path = "../flop-frontend" }
+miette = { version = "5.10.0", features = ["fancy"] }

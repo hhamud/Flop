@@ -1,26 +1,37 @@
 use crate::token::Token;
+use miette::{Diagnostic, SourceSpan};
+use thiserror::Error;
 
-#[derive(Debug, PartialEq)]
-pub enum Error {
+/// Lexer error for tokens unable to be transformed into tokens
+#[derive(Debug, PartialEq, Error)]
+pub enum LexerError {
+    /// Incomplete String error
+    #[error("")]
+    IncompleteStringError(ExpectedError),
+
+    /// syntax keyword error
+    #[error("")]
+    KeywordError(ExpectedError),
+
+    /// Incomplete String error
+    #[error("")]
+    ExtractWordError(ExpectedError),
+}
+
+#[derive(Debug, PartialEq, Error, Diagnostic)]
+pub enum ParseError {
     /// Parsing error for tokens left unprocessed in stack
+    #[error("Stack Error occured")]
     StackError(ExpectedError),
 
+    #[error("Stack Error occured")]
     /// Parsing error for tokens unable to be transformed into nodes
     TokenError(ExpectedError),
-
-    /// Lexer error for tokens unable to be transformed into tokens
-    LexerError(ExpectedError),
-
-    /// Evaluation errors for nodes that are unable to be executed
-    EvalError(ExpectedError),
-
-    /// Operation and comparison error
-    OperationError(ExpectedError),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ExpectedError {
-    pub expected: &'static str,
-    pub found: &'static str,
+    pub expected: String,
+    pub found: String,
     pub token: Token,
 }
