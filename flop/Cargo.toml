@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.1", features = ["derive"] }
 flop-interpretor = { path = "../flop-interpretor" }
+miette = { version = "5.10.0", features = ["fancy"] }

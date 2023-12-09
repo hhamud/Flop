@@ -1,10 +1,11 @@
 use crate::env::Environment;
 use crate::evaluation::{evaluate, EvalResult};
 use flop_frontend::{ast::parse, lexer::tokenise};
+use miette::Result;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-pub fn repl() {
+pub fn repl() -> Result<EvalResult> {
     println!("Starting REPL mode...");
 
     let mut env = Environment::new();
@@ -30,28 +31,35 @@ pub fn repl() {
         let mut namespace = PathBuf::new();
         namespace.push("repl");
 
-        let mut tokens = tokenise(input.clone(), &namespace).unwrap();
+        let mut tokens = tokenise(input.clone(), &namespace)?;
 
-        match parse(&mut tokens) {
-            Ok(mut ast) => match evaluate(&mut ast, &mut env) {
-                Ok(n) => match n {
-                    EvalResult::Void => {}
-                    EvalResult::Literal(n) => {
-                        println!("{:?}", n);
-                    }
-                    EvalResult::List(n) => {
-                        println!("{:?}", n);
-                    }
-                },
-                Err(err) => {
-                    eprintln!("{:?}", err)
-                }
-            },
+        let parse = parse(&mut tokens)?;
 
-            //TODO: add more detail to parsing errors
-            Err(err) => {
-                eprintln!("{:?}", err)
-            }
-        }
+        let eval = evaluate(&mut parse, &mut env)?;
+
+        return Ok(eval);
     }
+
+    //match parse(&mut tokens) {
+    //Ok(mut ast) => match evaluate(&mut ast, &mut env) {
+    //Ok(n) => match n {
+    //EvalResult::Void => {}
+    //EvalResult::Literal(n) => {
+    //println!("{:?}", n);
+    //}
+    //EvalResult::List(n) => {
+    //println!("{:?}", n);
+    //}
+    //},
+    //Err(err) => {
+    //eprintln!("{:?}", err)
+    //}
+    //},
+    //
+    ////TODO: add more detail to parsing errors
+    //Err(err) => {
+    //eprintln!("{:?}", err)
+    //}
+    //}
+    //}
 }

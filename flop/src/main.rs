@@ -1,6 +1,7 @@
 use clap::Parser;
 //use flop_interpretor::{file::read_file, repl::repl};
 use flop_interpretor::repl::repl;
+use miette::Result;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -12,7 +13,7 @@ struct Opts {
     file: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let opts = Opts::parse();
 
     match (&opts.repl, &opts.file) {

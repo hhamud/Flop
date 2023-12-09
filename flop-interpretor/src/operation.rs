@@ -1,3 +1,5 @@
+use crate::error::EvalError;
+
 pub enum Operation {
     Add,
     Subtract,
@@ -27,7 +29,7 @@ impl Operation {
 }
 
 impl TryFrom<&str> for Operation {
-    type Error = &'static str;
+    type Error = EvalError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
@@ -40,7 +42,7 @@ impl TryFrom<&str> for Operation {
             "<=" => Ok(Operation::LessThanOrEqual),
             ">" => Ok(Operation::GreaterThan),
             "<" => Ok(Operation::LessThan),
-            _ => Err("Unsupported operation"),
+            _ => Err(EvalError::SymbolError(value)),
         }
     }
 }

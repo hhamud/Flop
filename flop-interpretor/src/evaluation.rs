@@ -1,6 +1,7 @@
-use std::{collections::HashMap, error::Error};
+use std::collections::HashMap;
 
-use crate::{env::Environment, operation::Operation};
+use crate::{env::Environment, error::EvalError, operation::Operation};
+
 use flop_frontend::{
     ast::{FunctionCall, Node, VariableDefinition},
     stack::Stack,
@@ -13,15 +14,15 @@ pub enum EvalResult {
     List(Stack<Node>),
 }
 
-fn parse_literal(node: &Node) -> Result<i64, Box<dyn Error>> {
+fn parse_literal(node: &Node) -> Result<i64, EvalError> {
     if let Node::Literal(token) = node {
         Ok(token.token.parse::<i64>()?)
     } else {
-        Err("Node is not a literal".into())
+        Err(EvalError::LiteralError(node.clone()))
     }
 }
 
-fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
+fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, EvalError> {
     let mut oper = parse_literal(&fc.arguments.data[0])?;
 
     let operation = Operation::try_from(fc.name.token.as_str())?;
@@ -40,40 +41,23 @@ fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, Box<dyn Error>> {
             token.column.clone(),
             &token.namespace,
         ),
-        _ => unreachable!(),
+        _ => return Err(EvalError::OperationError(fc.arguments.data[0])),
     };
 
     Ok(EvalResult::Literal(new_token))
 }
 
-pub fn evaluate(
-    nodes: &mut Stack<Node>,
-    env: &mut Environment,
-) -> Result<EvalResult, Box<dyn Error>> {
+pub fn evaluate(nodes: &mut Stack<Node>, env: &mut Environment) -> Result<EvalResult, EvalError> {
     while let Some(node) = nodes.pop_front() {
         match node {
             Node::FunctionCall(fc) => {
                 if let Some(function) = env.functions.get(&fc.name.token) {
-                    // new local scope
-                    // TODO only clone this specific function and not all
                     let mut local_env = Environment {
                         functions: env.functions.clone(),
                         variables: HashMap::new(),
                     };
 
-                    //(Add 1 2)
-
-                    //(defn Add [x y]
-                    // "adds two numbers together"
-                    // (+ x y))
-
-                    // grouping parmeter with function arg
-                    // (Add [x y]) -> (Add 1 2) -> (x, 1) (y, 2)
-                    // (+ x y)
-
                     for (param, arg) in function.parameters.data.iter().zip(fc.arguments.data) {
-                        //TODO do something better than this
-                        // unwrap assignment of token back into node
                         let assignment = match arg {
                             Node::Literal(token) => token,
                             _ => todo!(),
@@ -92,7 +76,6 @@ pub fn evaluate(
 
                     return evaluate(&mut body, &mut local_env);
                 } else {
-                    // could be a math operation
                     return evaluate_math(fc);
                 }
             }
@@ -125,5 +108,5 @@ pub fn evaluate(
         }
     }
 
-    return Err(format!("Failed to pop off").into());
+    return Err(EvalError::StackError(nodes.clone()));
 }
