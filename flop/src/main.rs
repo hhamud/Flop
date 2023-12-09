@@ -28,7 +28,7 @@ fn main() -> Result<()> {
             };
         },
 
-        (_, Some(file)) => todo!(),
+        (_, Some(_file)) => todo!(),
         //(_, Some(file)) => read_file(file),
         _ => Ok(println!(
             "Please specify a mode: --repl or --file <FILE_PATH>"

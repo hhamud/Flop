@@ -1,10 +1,6 @@
 use core::fmt;
 
-use crate::{
-    error::ParseError,
-    stack::Stack,
-    token::{Token, TokenKind},
-};
+use crate::{stack::Stack, token::Token};
 
 use thiserror::Error;
 
@@ -74,7 +70,7 @@ impl fmt::Display for Node {
                     def.parameters.data.len()
                 )
             }
-            Node::Conditional(cond) => {
+            Node::Conditional(_cond) => {
                 write!(f, "Conditional: If [...], Then [...], Else [...]")
             }
             Node::VariableDefinition(var_def) => {
@@ -93,7 +89,7 @@ impl fmt::Display for Node {
             Node::VariableCall(var_call) => {
                 write!(f, "Variable Call: {}", var_call.name)
             }
-            Node::List(list) => {
+            Node::List(_list) => {
                 write!(f, "List: [...]") // You might want to display elements of the list
             }
             Node::Documentation(doc) => {

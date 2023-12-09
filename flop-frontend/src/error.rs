@@ -1,21 +1,32 @@
-use miette::Diagnostic;
+use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
 use crate::{stack::Stack, token::Token};
 
-/// Lexer error for tokens unable to be transformed into tokens
-#[derive(Debug, PartialEq, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 #[error("LexerError")]
-pub enum LexerError {
+#[diagnostic(
+    help("lmao"),
+    code(oops::my::bad)
+)]
+pub struct LexerError {
+
     #[label("String to be either doc strings or within an expression")]
-    IncompleteStringError(#[from] Token),
-
-    #[label("Valid keyword needed")]
-    KeywordError(Token),
-
-    #[label("Found another word, check the stack")]
-    ExtractWordError(Token),
+    pub bad: SourceSpan,
 }
+
+//#[derive(Debug, PartialEq, Error, Diagnostic)]
+//#[error("LexerError")]
+//pub enum LexerError {
+//#[label("String to be either doc strings or within an expression")]
+//IncompleteStringError(SourceSpan),
+//
+//#[label("Valid keyword needed")]
+//KeywordError(Token),
+//
+//#[label("Found another word, check the stack")]
+//ExtractWordError(Token),
+//}
 
 #[derive(Debug, PartialEq, Error, Diagnostic)]
 #[error("ParseError")]
@@ -27,10 +38,10 @@ where
     StackError { name: &'static str, stack: Stack<K> },
 
     #[label("Variable Definition: Expected a variable name")]
-    VariableDefinition(#[from] Token),
+    VariableDefinition(SourceSpan),
 
     #[label("Variable Assignment: Expected a variable value")]
-    VariableAssignment(Token),
+    VariableAssignment(SourceSpan),
 
     #[label("LIST can only contain NUMBER, STRING, BOOLEAN OR another LIST")]
     ListDefinition(Token),

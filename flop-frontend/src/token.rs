@@ -1,4 +1,4 @@
-use miette::{ByteOffset, SourceOffset, SourceSpan};
+use miette::{ByteOffset, NamedSource, SourceOffset, SourceSpan};
 use std::{fmt, ops::Range, path::PathBuf};
 use thiserror::Error;
 
@@ -23,18 +23,21 @@ pub struct Token {
     pub namespace: PathBuf,
 }
 
-impl From<Line> for (usize, usize) {
-    fn from(value: Line) -> Self {
-        (value.start, value.end)
+impl From<Token> for SourceSpan {
+    fn from(value: Token) -> Self {
+        let source = value.namespace.to_str().unwrap();
+        let offset = SourceOffset::from_location(source, value.row, value.column.start);
+        let length =
+            SourceOffset::from_location(source, value.row, value.column.end - value.column.start);
+
+        SourceSpan::new(offset, length)
     }
 }
 
-impl From<Token> for SourceSpan {
+impl From<Token> for NamedSource {
     fn from(value: Token) -> Self {
-        let length = value.column.end - value.column.start;
-        let start: ByteOffset = value.column.start;
-
-        SourceSpan::from((start, length))
+        let source = value.namespace.to_str().unwrap();
+        NamedSource::new(source, value.token)
     }
 }
 
