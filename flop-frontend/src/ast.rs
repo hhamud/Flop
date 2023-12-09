@@ -186,7 +186,7 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
     }
 }
 
-fn parse_conditional(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
+fn parse_conditional(_tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
     todo!()
 }
 

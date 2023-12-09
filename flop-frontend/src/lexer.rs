@@ -1,5 +1,3 @@
-use miette::SourceSpan;
-
 use crate::{
     error::LexerError,
     stack::Stack,
@@ -239,7 +237,7 @@ pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, Lexer
             }
             _ => {
                 let word = extract_word(&mut chars, row, col, &namespace)?;
-                if let Ok(i) = word.parse::<i64>() {
+                if let Ok(_) = word.parse::<i64>() {
                     stack.push(Token::new(
                         word.as_str(),
                         TokenKind::Integer,

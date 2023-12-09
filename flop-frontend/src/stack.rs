@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::VecDeque, fmt::Display};
+use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Stack<K> {

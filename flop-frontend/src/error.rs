@@ -1,4 +1,4 @@
-use miette::{Diagnostic, SourceSpan};
+use miette::Diagnostic;
 use thiserror::Error;
 
 use crate::{stack::Stack, token::Token};
