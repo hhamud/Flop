@@ -25,7 +25,7 @@ fn parse_literal(node: &Node) -> Result<i64, EvalError> {
 fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, EvalError> {
     let mut oper = parse_literal(&fc.arguments.data[0])?;
 
-    let operation = Operation::try_from(fc.name.token.as_str())?;
+    let operation = Operation::try_from(fc.name)?;
 
     for operand in fc.arguments.data.iter().skip(1) {
         let oper_val = parse_literal(operand)?;
@@ -41,7 +41,7 @@ fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, EvalError> {
             token.column.clone(),
             &token.namespace,
         ),
-        _ => return Err(EvalError::OperationError(fc.arguments.data[0])),
+        _ => return Err(EvalError::OperationError(fc.arguments.data[0].clone())),
     };
 
     Ok(EvalResult::Literal(new_token))

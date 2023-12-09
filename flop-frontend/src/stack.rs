@@ -1,7 +1,8 @@
 use core::fmt;
 use std::collections::VecDeque;
+use thiserror::Error;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Error)]
 pub struct Stack<K> {
     pub data: VecDeque<K>,
 }

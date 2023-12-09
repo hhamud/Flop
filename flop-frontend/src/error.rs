@@ -5,23 +5,20 @@ use crate::{stack::Stack, token::Token};
 
 /// Lexer error for tokens unable to be transformed into tokens
 #[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error(transparent)]
+#[error("LexerError")]
 pub enum LexerError {
-    #[error("Incomplete String error")]
     #[label("String to be either doc strings or within an expression")]
-    IncompleteStringError(Token),
+    IncompleteStringError(#[from] Token),
 
-    #[error("Unexpected keyword")]
     #[label("Valid keyword needed")]
     KeywordError(Token),
 
-    #[error("Word ended unexpectedly")]
     #[label("Found another word, check the stack")]
     ExtractWordError(Token),
 }
 
 #[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error(transparent)]
+#[error("ParseError")]
 pub enum ParseError<K>
 where
     K: std::fmt::Debug + std::fmt::Display,
@@ -30,7 +27,7 @@ where
     StackError { name: &'static str, stack: Stack<K> },
 
     #[label("Variable Definition: Expected a variable name")]
-    VariableDefinition(Token),
+    VariableDefinition(#[from] Token),
 
     #[label("Variable Assignment: Expected a variable value")]
     VariableAssignment(Token),

@@ -1,6 +1,6 @@
 use clap::Parser;
 //use flop_interpretor::{file::read_file, repl::repl};
-use flop_interpretor::repl::repl;
+use flop_interpretor::{evaluation::EvalResult, repl::repl};
 use miette::Result;
 
 #[derive(Debug, Parser)]
@@ -17,9 +17,21 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
 
     match (&opts.repl, &opts.file) {
-        (true, _) => repl(),
+        (true, _) => loop {
+            let res = repl()?;
+
+            match res {
+                EvalResult::Void | EvalResult::List(_) => todo!(),
+                EvalResult::Literal(n) => {
+                    println!("{:?}", n);
+                }
+            };
+        },
+
         (_, Some(file)) => todo!(),
         //(_, Some(file)) => read_file(file),
-        _ => println!("Please specify a mode: --repl or --file <FILE_PATH>"),
+        _ => Ok(println!(
+            "Please specify a mode: --repl or --file <FILE_PATH>"
+        )),
     }
 }
