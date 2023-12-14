@@ -3,33 +3,26 @@ use thiserror::Error;
 
 use crate::{stack::Stack, token::Token};
 
-#[derive(Debug, Error, Diagnostic)]
-#[error("LexerError")]
-#[diagnostic(
-    help("lmao"),
-    code(oops::my::bad)
-)]
-pub struct LexerError {
-
+/// Lexer error for tokens unable to be transformed into tokens
+#[derive(Debug, PartialEq, Error, Diagnostic)]
+#[error(transparent)]
+pub enum LexerError {
+    #[error("Incomplete String error")]
     #[label("String to be either doc strings or within an expression")]
-    pub bad: SourceSpan,
+    IncompleteStringError(Token),
+
+    #[error("Unexpected keyword")]
+    #[label("Valid keyword needed")]
+    KeywordError(Token),
+
+    #[error("Word ended unexpectedly")]
+    #[label("Found another word, check the stack")]
+    ExtractWordError(Token),
 }
 
-//#[derive(Debug, PartialEq, Error, Diagnostic)]
-//#[error("LexerError")]
-//pub enum LexerError {
-//#[label("String to be either doc strings or within an expression")]
-//IncompleteStringError(SourceSpan),
-//
-//#[label("Valid keyword needed")]
-//KeywordError(Token),
-//
-//#[label("Found another word, check the stack")]
-//ExtractWordError(Token),
-//}
 
 #[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error("ParseError")]
+#[error(transparent)]
 pub enum ParseError<K>
 where
     K: std::fmt::Debug + std::fmt::Display,
@@ -38,7 +31,7 @@ where
     StackError { name: &'static str, stack: Stack<K> },
 
     #[label("Variable Definition: Expected a variable name")]
-    VariableDefinition(SourceSpan),
+    VariableDefinition(Token),
 
     #[label("Variable Assignment: Expected a variable value")]
     VariableAssignment(SourceSpan),

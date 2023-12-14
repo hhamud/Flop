@@ -1,5 +1,5 @@
-use miette::{ByteOffset, NamedSource, SourceOffset, SourceSpan};
-use std::{fmt, ops::Range, path::PathBuf};
+use miette::{SourceOffset, SourceSpan};
+use std::{fmt, path::PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -25,24 +25,19 @@ pub struct Token {
 
 impl From<Token> for SourceSpan {
     fn from(value: Token) -> Self {
+        //TODO: check the length sourceoffset implementation
+        // maybe this just means the length of the code
         let source = value.namespace.to_str().unwrap();
         let offset = SourceOffset::from_location(source, value.row, value.column.start);
-        let length =
-            SourceOffset::from_location(source, value.row, value.column.end - value.column.start);
+        let length = SourceOffset::from_location(source, value.row, value.column.start);
 
-        SourceSpan::new(offset, length)
-    }
-}
-
-impl From<Token> for NamedSource {
-    fn from(value: Token) -> Self {
-        let source = value.namespace.to_str().unwrap();
-        NamedSource::new(source, value.token)
+        SourceSpan::new(length, offset)
     }
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Format the token for display. This is a simple example, adjust as needed.
         write!(
             f,
             "Token: {}, Kind: {:?}, Row: {}, Column: ({}, {}), Namespace: {:?}",

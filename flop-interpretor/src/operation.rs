@@ -1,5 +1,3 @@
-use flop_frontend::token::Token;
-
 use crate::error::EvalError;
 
 pub enum Operation {
@@ -30,12 +28,10 @@ impl Operation {
     }
 }
 
-impl TryFrom<Token> for Operation {
+impl TryFrom<&str> for Operation {
     type Error = EvalError;
 
-    fn try_from(token: Token) -> Result<Self, Self::Error> {
-        let value = token.token.as_str();
-
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "+" => Ok(Operation::Add),
             "-" => Ok(Operation::Subtract),
@@ -46,7 +42,7 @@ impl TryFrom<Token> for Operation {
             "<=" => Ok(Operation::LessThanOrEqual),
             ">" => Ok(Operation::GreaterThan),
             "<" => Ok(Operation::LessThan),
-            _ => Err(EvalError::SymbolError(token)),
+            _ => Err(EvalError::SymbolError(value)),
         }
     }
 }
