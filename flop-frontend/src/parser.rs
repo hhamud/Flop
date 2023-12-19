@@ -18,7 +18,7 @@ fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
 
     let var_name = match var_token.token_kind {
         TokenKind::Symbol => var_token,
-        _ => return Err(ParseError::VariableDefinition(SourceSpan::from(var_token))),
+        _ => return Err(ParseError::VariableDefinition(var_token)),
     };
 
     let value_token = tokens.pop_front().ok_or(ParseError::StackError {
@@ -31,11 +31,7 @@ fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
         TokenKind::Bool => value_token,
         TokenKind::StringLiteral => value_token,
         //TODO: Add ability to assign expressions to variables
-        _ => {
-            return Err(ParseError::VariableAssignment(SourceSpan::from(
-                value_token,
-            )))
-        }
+        _ => return Err(ParseError::VariableAssignment(value_token)),
     };
 
     let var = VariableDefinition {
@@ -151,7 +147,7 @@ fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> 
         })
         .and_then(|name| match name.token_kind {
             TokenKind::Symbol => Ok(name),
-            _ => return Err(ParseError::VariableAssignment(SourceSpan::from(name))),
+            _ => return Err(ParseError::VariableAssignment(name)),
         })?;
 
     let vc = VariableCall { name: assignment };

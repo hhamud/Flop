@@ -1,14 +1,14 @@
 use std::num::ParseIntError;
 
-use flop_frontend::{ast::Node, stack::Stack, token::Token};
+use flop_frontend::{ast::Node, stack::Stack};
 use miette::Diagnostic;
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error(transparent)]
+#[error("evalerror")]
 pub enum EvalError {
     #[label("Incorrect operation symbol: {.0}")]
-    SymbolError(&'static str),
+    SymbolError(String),
 
     #[label("Incorrect operation Token")]
     OperationError(Node),

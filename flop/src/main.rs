@@ -1,6 +1,6 @@
 use clap::Parser;
 //use flop_interpretor::{file::read_file, repl::repl};
-use flop_interpretor::repl::repl;
+use flop_interpretor::{evaluation::EvalResult, repl::repl};
 use miette::Result;
 
 #[derive(Debug, Parser)]
@@ -30,6 +30,8 @@ fn main() -> Result<()> {
 
         (_, Some(_file)) => todo!(),
         //(_, Some(file)) => read_file(file),
-        _ => Ok(println!("Please specify a mode: --repl or --file <FILE_PATH>")),
+        _ => Ok(println!(
+            "Please specify a mode: --repl or --file <FILE_PATH>"
+        )),
     }
 }
