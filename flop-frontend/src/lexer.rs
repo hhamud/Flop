@@ -103,7 +103,7 @@ fn extract_word(
     Ok(word)
 }
 
-pub fn tokenise(code: String, namespace: &PathBuf) -> Result<Stack<Token>, LexerError> {
+pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, LexerError> {
     let mut stack = Stack::new();
     let mut chars = code.chars().peekable();
     // keep track of right and left brace pairs

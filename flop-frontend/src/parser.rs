@@ -133,19 +133,8 @@ fn parse_conditional(_tokens: &mut Stack<Token>) -> Result<Node, ParseError<Toke
     todo!()
 }
 
-fn parse_var_call(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
-    let assignment = tokens
-        .pop_front()
-        .ok_or(ParseError::StackError {
-            name: "No variable symbol in Stack",
-            stack: tokens.clone(),
-        })
-        .and_then(|name| match name.token_kind {
-            TokenKind::Symbol => Ok(name),
-            _ => return Err(ParseError::VariableAssignment(name)),
-        })?;
-
-    let vc = VariableCall { name: assignment };
+fn parse_var_call(token: Token) -> Result<Node, ParseError<Token>> {
+    let vc = VariableCall { name: token };
 
     Ok(Node::VariableCall(vc))
 }
@@ -207,7 +196,7 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError<Token>
             TokenKind::FunctionDefinition => nodes.push(parse_function_definition(tokens)?),
             TokenKind::Conditional => nodes.push(parse_conditional(tokens)?),
             TokenKind::LeftRoundBracket => nodes.push(parse_expression(tokens)?),
-            TokenKind::Symbol => nodes.push(parse_var_call(tokens)?),
+            TokenKind::Symbol => nodes.push(parse_var_call(token)?),
 
             _ => return Err(ParseError::ParseError(token)),
         };

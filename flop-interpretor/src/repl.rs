@@ -5,36 +5,57 @@ use miette::Result;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-pub fn repl() -> Result<EvalResult> {
-    println!("Starting REPL mode...");
+pub struct Repl {
+    state: Environment,
+}
 
-    let mut env = Environment::new();
-
-    print!("> ");
-
-    if let Err(e) = io::stdout().flush() {
-        println!("Error flushing stdout: {:?}", e);
+impl Repl {
+    pub fn new() -> Self {
+        Self {
+            state: Environment::new(),
+        }
     }
 
-    let mut input = String::new();
+    pub fn run(&mut self) -> Result<()> {
+        println!("Starting REPL mode...");
 
-    if let Err(e) = io::stdin().read_line(&mut input) {
-        println!("Error reading line: {:?}", e);
+        loop {
+            print!("> ");
+
+            let mut input = String::new();
+
+            if let Err(e) = io::stdout().flush() {
+                println!("Error flushing stdout: {:?}", e);
+            }
+
+            if let Err(e) = io::stdin().read_line(&mut input) {
+                println!("Error reading line: {:?}", e);
+            }
+
+            if input.trim() == "exit" || input.trim() == "quit" {
+                break;
+            }
+
+            // temp namespace
+            let mut namespace = PathBuf::new();
+
+            namespace.push("repl");
+
+            let mut tokens = tokenise(&input, &namespace)?;
+
+            let mut parse = parse(&mut tokens)?;
+
+            let eval = evaluate(&mut parse, &mut self.state)?;
+
+            match eval {
+                EvalResult::Void => {}
+                EvalResult::List(_) => todo!(),
+                EvalResult::Literal(n) => {
+                    println!("{:?}", n);
+                }
+            };
+        }
+
+        Ok(())
     }
-
-    if input.trim() == "exit" || input.trim() == "quit" {
-        return Ok(EvalResult::Void);
-    }
-
-    // temp namespace
-    let mut namespace = PathBuf::new();
-    namespace.push("repl");
-
-    let mut tokens = tokenise(input.clone(), &namespace)?;
-
-    let mut parse = parse(&mut tokens)?;
-
-    let eval = evaluate(&mut parse, &mut env)?;
-
-    Ok(eval)
 }
