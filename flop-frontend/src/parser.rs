@@ -1,5 +1,3 @@
-use miette::SourceSpan;
-
 use crate::{
     ast::*,
     error::ParseError,
@@ -8,9 +6,6 @@ use crate::{
 };
 
 fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
-    // pop Node::Expression
-    let _exp = tokens.pop_front();
-
     let var_token = tokens.pop_front().ok_or(ParseError::StackError {
         name: "variable name",
         stack: tokens.clone(),
