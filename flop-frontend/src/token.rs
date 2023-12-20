@@ -1,4 +1,4 @@
-use miette::{SourceOffset, SourceSpan};
+use miette::{MietteSpanContents, SourceCode, SourceOffset, SourceSpan, SpanContents};
 use std::{fmt, path::PathBuf};
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ impl Line {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Error)]
+#[derive(Debug, Clone, Error)]
 pub struct Token {
     pub token: String,
     pub token_kind: TokenKind,
@@ -32,6 +32,33 @@ impl From<Token> for SourceSpan {
         let length = SourceOffset::from_location(source, value.row, value.column.start);
 
         SourceSpan::new(length, offset)
+    }
+}
+
+impl SourceCode for Token {
+    fn read_span<'a>(
+        &'a self,
+        span: &SourceSpan,
+        _context_lines_before: usize,
+        _context_lines_after: usize,
+    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
+        let name: String = self
+            .namespace
+            .file_name()
+            .and_then(|f| f.to_str())
+            .unwrap_or("No valid file name")
+            .to_string();
+
+        //let token_span = SourceSpan::from(self);
+
+        Ok(Box::new(MietteSpanContents::new_named(
+            name,
+            self.token.as_bytes(),
+            *span,
+            self.row,
+            self.column.start,
+            1,
+        )))
     }
 }
 

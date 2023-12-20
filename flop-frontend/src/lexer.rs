@@ -65,11 +65,12 @@ fn extract_string_content(
         }
     } else {
         // if no stack.last, stack is empty, (defn )
+
         Err(LexerError::IncompleteStringError(Token::new(
             res.as_str(),
             TokenKind::Error,
             row,
-            col,
+            col.clone(),
             namespace,
         )))
     }

@@ -1,61 +1,105 @@
-use miette::{Diagnostic, SourceSpan};
+use std::fmt::{Debug, Display};
+
+use miette::Diagnostic;
 use thiserror::Error;
 
 use crate::{stack::Stack, token::Token};
 
-/// Lexer error for tokens unable to be transformed into tokens
-#[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error("lmao")]
+#[derive(Debug, Error, Diagnostic)]
+#[error("LexerError")]
 pub enum LexerError {
-    #[label("String to be either doc strings or within an expression")]
-    IncompleteStringError(Token),
+    #[diagnostic(help("lmao"))]
+    IncompleteStringError(
+        #[source_code]
+        #[label("String to be either doc strings or within an expression")]
+        Token,
+    ),
 
-    #[label("Valid keyword needed")]
-    KeywordError(Token),
+    KeywordError(
+        #[source_code]
+        #[label("Valid keyword needed")]
+        Token,
+    ),
 
-    #[label("Found another word, check the stack")]
-    ExtractWordError(Token),
+    ExtractWordError(
+        #[source_code]
+        #[label("Found another word, check the stack")]
+        Token,
+    ),
 }
 
-#[derive(Debug, PartialEq, Error, Diagnostic)]
-#[error("parseError")]
+#[derive(Debug, Error, Diagnostic)]
+#[error("ParseError")]
 pub enum ParseError<K>
 where
-    K: std::fmt::Debug + std::fmt::Display,
+    K: Debug + Display,
 {
     #[error("Failed to pop stack for {name}: {stack}")]
     StackError { name: &'static str, stack: Stack<K> },
 
-    #[label("Variable Definition: Expected a variable name")]
-    VariableDefinition(Token),
+    VariableDefinition(
+        #[source_code]
+        #[label("Variable Definition: Expected a variable name")]
+        Token,
+    ),
 
-    #[label("Variable Assignment: Expected a variable value")]
-    VariableAssignment(Token),
+    VariableAssignment(
+        #[source_code]
+        #[label("Variable Assignment: Expected a variable value")]
+        Token,
+    ),
 
-    #[label("LIST can only contain NUMBER, STRING, BOOLEAN OR another LIST")]
-    ListDefinition(Token),
+    ListDefinition(
+        #[source_code]
+        #[label("LIST can only contain NUMBER, STRING, BOOLEAN OR another LIST")]
+        Token,
+    ),
 
-    #[label("Function name must be a symbol")]
-    FunctionName(Token),
+    FunctionName(
+        #[source_code]
+        #[label("Function name must be a symbol")]
+        Token,
+    ),
 
-    #[label("Function Parameter must be a SYMBOL")]
-    FunctionParameter(Token),
+    FunctionParameter(
+        #[source_code]
+        #[label("Function Parameter must be a SYMBOL")]
+        Token,
+    ),
 
-    #[label("Function Docstring must be a symbol")]
-    FunctionDocstring(Token),
+    FunctionDocstring(
+        #[source_code]
+        #[label("Function Docstring must be a symbol")]
+        Token,
+    ),
 
-    #[label("Function body must start with a LeftRoundBracket")]
-    FunctionBody(Token),
+    FunctionBody(
+        #[label("Function body must start with a LeftRoundBracket")]
+        #[source_code]
+        Token,
+    ),
 
-    #[label("Variable call must be a SYMBOL")]
-    VariableCall(Token),
+    VariableCall(
+        #[source_code]
+        #[label("Variable call must be a SYMBOL")]
+        Token,
+    ),
 
-    #[label("Function Name is not of the correct type: SYMBOL")]
-    FunctionCallName(Token),
+    FunctionCallName(
+        #[source_code]
+        #[label("Function Name is not of the correct type: SYMBOL")]
+        Token,
+    ),
 
-    #[label("Function argument is not of the correct type: NUMBER, STRING, BOOL")]
-    FunctionCallArg(Token),
+    FunctionCallArg(
+        #[source_code]
+        #[label("Function argument is not of the correct type: NUMBER, STRING, BOOL")]
+        Token,
+    ),
 
-    #[label("Wrong token")]
-    ParseError(Token),
+    ParseError(
+        #[source_code]
+        #[label("Wrong token")]
+        Token,
+    ),
 }

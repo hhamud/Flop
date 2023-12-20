@@ -4,7 +4,7 @@ use flop_frontend::{ast::Node, stack::Stack};
 use miette::Diagnostic;
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 #[error("evalerror")]
 pub enum EvalError {
     #[label("Incorrect operation symbol: {.0}")]
