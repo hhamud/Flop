@@ -1,20 +1,29 @@
 use std::num::ParseIntError;
 
-use flop_frontend::{ast::Node, stack::Stack};
+use flop_frontend::{ast::Node, stack::Stack, token::Token};
 use miette::Diagnostic;
 use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
 #[error("evalerror")]
 pub enum EvalError {
-    #[label("Incorrect operation symbol: {.0}")]
-    SymbolError(String),
+    SymbolError(
+        #[source_code]
+        #[label("Incorrect operation symbol")]
+        Token,
+    ),
 
-    #[label("Incorrect operation Token")]
-    OperationError(Node),
+    OperationError(
+        #[source_code]
+        #[label("Incorrect operation Token")]
+        Node,
+    ),
 
-    #[label("Node is not a literal token")]
-    LiteralError(Node),
+    LiteralError(
+        #[source_code]
+        #[label("Node is not a literal token")]
+        Node,
+    ),
 
     #[label("Stack failed to pop off ")]
     StackError(Stack<Node>),

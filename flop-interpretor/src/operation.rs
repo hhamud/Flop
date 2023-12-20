@@ -46,7 +46,7 @@ impl TryFrom<Token> for Operation {
             "<=" => Ok(Operation::LessThanOrEqual),
             ">" => Ok(Operation::GreaterThan),
             "<" => Ok(Operation::LessThan),
-            _ => Err(EvalError::SymbolError(value.to_string())),
+            _ => Err(EvalError::SymbolError(token)),
         }
     }
 }

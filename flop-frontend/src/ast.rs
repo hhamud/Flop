@@ -1,3 +1,5 @@
+use miette::{SourceCode, SourceSpan};
+
 use crate::{
     error::ParseError,
     stack::Stack,
@@ -57,4 +59,21 @@ pub enum Node {
     VariableCall(VariableCall),
     List(List),
     Documentation(Documentation),
+}
+
+impl SourceCode for Node {
+    fn read_span<'a>(
+        &'a self,
+        span: &miette::SourceSpan,
+        context_lines_before: usize,
+        context_lines_after: usize,
+    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
+        todo!()
+    }
+}
+
+impl From<Node> for SourceSpan {
+    fn from(value: Node) -> Self {
+        todo!()
+    }
 }
