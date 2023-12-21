@@ -119,11 +119,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
             '\n' => {
                 row += 1;
                 col = 0;
-                if namespace.to_string_lossy().contains("repl") {
-                    return Ok(stack);
-                } else {
-                    continue;
-                }
+                chars.next();
             }
             '(' => {
                 if let Some(keyword) = peek_for_keywords(&mut chars) {
