@@ -1,5 +1,6 @@
+use std::path::Path;
 use clap::Parser;
-use flop_interpretor::repl::Repl;
+use flop_interpretor::{repl::Repl, file::Program};
 use miette::Result;
 
 #[derive(Debug, Parser)]
@@ -16,10 +17,8 @@ fn main() -> Result<()> {
     let opts = Opts::parse();
 
     match (&opts.repl, &opts.file) {
-        (Some(true), _) => Repl::new().run(),
-
-        (_, Some(_file)) => todo!(),
-        //(_, Some(file)) => read_file(file),
+        (Some(_), _) => Repl::new().run(),
+        (_, Some(file)) => Program::new().run(file),
         _ => Ok(println!(
             "Please specify a mode: --repl or --file <FILE_PATH>"
         )),
