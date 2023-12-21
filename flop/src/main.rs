@@ -1,6 +1,5 @@
-use std::path::Path;
 use clap::Parser;
-use flop_interpretor::{repl::Repl, file::Program};
+use flop_interpretor::{file::Program, repl::Repl};
 use miette::Result;
 
 #[derive(Debug, Parser)]

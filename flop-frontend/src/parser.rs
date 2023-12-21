@@ -79,11 +79,23 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             _ => return Err(ParseError::FunctionName(name)),
         })?;
 
+    let left_bracket = tokens
+        .pop_front()
+        .ok_or(ParseError::StackError {
+            name: "No left braket in stack",
+            stack: tokens.clone(),
+        })
+        .and_then(|lft| match lft.token_kind {
+            TokenKind::LeftSquareBracket => Ok(lft),
+            _ => return Err(ParseError::NoLeftBracket(lft)),
+        })?;
+
     let mut parameters: Stack<Token> = Stack::new();
 
     while let Some(function_arg) = tokens.pop_front() {
         match function_arg.token_kind {
             TokenKind::Symbol => parameters.push(function_arg),
+            TokenKind::RightSquareBracket => break,
             _ => return Err(ParseError::FunctionParameter(function_arg)),
         }
     }
@@ -94,9 +106,9 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             name: "No DocString Token in Stack",
             stack: tokens.clone(),
         })
-        .and_then(|doc_string| match name.token_kind {
-            TokenKind::StringLiteral => Ok(doc_string),
-            _ => return Err(ParseError::FunctionDocstring(doc_string)),
+        .and_then(|doc_string| match doc_string.token_kind {
+            TokenKind::DocString => Ok(doc_string),
+            _ => Err(ParseError::FunctionDocstring(doc_string)),
         })?;
 
     // function body
@@ -157,7 +169,7 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>
 
     while let Some(token_arg) = tokens.pop_front() {
         match token_arg.token_kind {
-            TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral => {
+            TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral | TokenKind::Symbol => {
                 arg_vec.push(Node::Literal(token_arg))
             }
             TokenKind::LeftRoundBracket => {
