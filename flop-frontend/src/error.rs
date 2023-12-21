@@ -6,12 +6,13 @@ use thiserror::Error;
 use crate::{stack::Stack, token::Token};
 
 #[derive(Debug, Error, Diagnostic)]
-#[error("LexerError")]
+#[error(transparent)]
 pub enum LexerError {
-    #[diagnostic(help("lmao"))]
+    #[error("Parse Error: Incorrect string placement")]
+    #[diagnostic(help("Did you mean this {} to be a SYMBOL", .0.token))]
     IncompleteStringError(
         #[source_code]
-        #[label("String to be either doc strings or within an expression")]
+        #[label("String has to be either a COMMENT, DOCUMENTATION STRING")]
         Token,
     ),
 
