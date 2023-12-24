@@ -29,6 +29,10 @@ impl<K> Stack<K> {
         self.data.back()
     }
 
+    pub fn first(&self) -> Option<&K> {
+        self.data.front()
+    }
+
     pub fn pop_front(&mut self) -> Option<K> {
         self.data.pop_front()
     }

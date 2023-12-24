@@ -5,7 +5,7 @@ use crate::{env::Environment, error::EvalError, operation::Operation};
 use flop_frontend::{
     ast::{FunctionCall, Node, VariableDefinition},
     stack::Stack,
-    token::Token,
+    token::{Token, TokenKind},
 };
 
 pub enum EvalResult {
@@ -14,99 +14,110 @@ pub enum EvalResult {
     List(Stack<Node>),
 }
 
-fn parse_literal(node: &Node) -> Result<i64, EvalError> {
+fn parse_literal(node: Node, env: &Environment) -> Result<i64, EvalError> {
     if let Node::Literal(token) = node {
-        Ok(token.token.parse::<i64>()?)
+        if let Some(variable) = env.variables.get(&token.token) {
+            Ok(variable.assignment.token.parse::<i64>()?)
+        } else {
+            Ok(token.token.parse::<i64>()?)
+        }
     } else {
-        Err(EvalError::LiteralError(node.clone()))
+        Err(EvalError::LiteralError(node))
     }
 }
 
-fn evaluate_math(fc: FunctionCall) -> Result<EvalResult, EvalError> {
-    let mut oper = parse_literal(&fc.arguments.data[0])?;
+fn evaluate_math(fc: &mut FunctionCall, env: &mut Environment) -> Result<EvalResult, EvalError> {
+    let namespace = &fc.name.namespace;
 
-    let operation = Operation::try_from(fc.name)?;
+    let node: Node = fc.arguments.pop_front().unwrap();
 
-    for operand in fc.arguments.data.iter().skip(1) {
-        let oper_val = parse_literal(operand)?;
+    let mut oper = parse_literal(node, env)?;
+
+    let operation = Operation::try_from(&fc.name)?;
+
+    while let Some(operand) = fc.arguments.pop_front() {
+        let oper_val = parse_literal(operand, env)?;
 
         oper = operation.apply(oper, oper_val);
     }
 
-    let new_token: Token = match &fc.arguments.data[0] {
-        Node::Literal(token) => Token::new(
-            &oper.to_string(),
-            token.token_kind.clone(),
-            token.row,
-            token.column.clone(),
-            &token.namespace,
-        ),
-        _ => return Err(EvalError::OperationError(fc.arguments.data[0].clone())),
-    };
+    let final_token = Token::new(
+        &oper.to_string(),
+        TokenKind::Integer,
+        1,
+        1,
+        oper.to_string().len(),
+        namespace,
+    );
 
-    Ok(EvalResult::Literal(new_token))
+    Ok(EvalResult::Literal(final_token))
 }
 
-pub fn evaluate(nodes: &mut Stack<Node>, env: &mut Environment) -> Result<EvalResult, EvalError> {
-    while let Some(node) = nodes.pop_front() {
-        match node {
-            Node::FunctionCall(fc) => {
-                if let Some(function) = env.functions.get(&fc.name.token) {
-                    let mut local_env = Environment {
-                        functions: env.functions.clone(),
-                        variables: HashMap::new(),
+pub fn evaluate_node(mut node: Node, env: &mut Environment) -> Result<EvalResult, EvalError> {
+    match node {
+        Node::FunctionCall(ref mut fc) => match env.functions.get(&fc.name.token) {
+            Some(function) => {
+                let mut local_env = Environment {
+                    functions: env.functions.clone(),
+                    variables: HashMap::new(),
+                };
+
+                for (param, arg) in function
+                    .parameters
+                    .data
+                    .iter()
+                    .zip(fc.arguments.data.clone())
+                {
+                    let assignment = match arg {
+                        Node::Literal(token) => token,
+                        _ => unreachable!(),
                     };
 
-                    for (param, arg) in function.parameters.data.iter().zip(fc.arguments.data) {
-                        let assignment = match arg {
-                            Node::Literal(token) => token,
-                            _ => todo!(),
-                        };
-
-                        local_env.variables.insert(
-                            param.token.clone(),
-                            VariableDefinition {
-                                name: param.clone(),
-                                assignment,
-                            },
-                        );
-                    }
-
-                    let mut body = function.body.clone();
-
-                    return evaluate(&mut body, &mut local_env);
-                } else {
-                    return evaluate_math(fc);
+                    local_env.variables.insert(
+                        param.token.clone(),
+                        VariableDefinition {
+                            name: param.clone(),
+                            assignment,
+                        },
+                    );
                 }
-            }
-            Node::FunctionDefinition(fd) => {
-                env.functions.insert(fd.name.token.clone(), fd);
-                return Ok(EvalResult::Void);
-            }
-            Node::VariableDefinition(vd) => {
-                env.variables.insert(vd.name.token.clone(), vd);
-                return Ok(EvalResult::Void);
-            }
-            Node::Conditional(_) => {
-                todo!()
-            }
-            Node::Literal(token) => {
-                // handles integers, bools and strings
-                return Ok(EvalResult::Literal(token));
-            }
-            Node::VariableCall(vc) => {
-                if let Some(variable) = env.variables.get(&vc.name.token) {
-                    return Ok(EvalResult::Literal(variable.assignment.clone()));
+
+                let mut body = function.body.clone();
+
+                while let Some(b) = body.pop_front() {
+                    return evaluate_node(b, &mut local_env);
                 }
+
+                Ok(EvalResult::Void)
             }
-            Node::List(ls) => {
-                return Ok(EvalResult::List(ls.data));
-            }
-            Node::Documentation(_) => {
-                todo!();
-            }
+            None => return evaluate_math(fc, env),
+        },
+        Node::FunctionDefinition(fd) => {
+            env.functions.insert(fd.name.token.clone(), fd.clone());
+            return Ok(EvalResult::Void);
+        }
+        Node::VariableDefinition(vd) => {
+            env.variables.insert(vd.name.token.clone(), vd.clone());
+            return Ok(EvalResult::Void);
+        }
+        Node::Literal(token) => {
+            // handles integers, bools and strings
+            return Ok(EvalResult::Literal(token));
+        }
+        Node::VariableCall(vc) => match env.variables.get(&vc.name.token) {
+            Some(variable) => Ok(EvalResult::Literal(variable.assignment.clone())),
+            None => Err(EvalError::FunctionCallMissing(vc.name)),
+        },
+        Node::List(ls) => {
+            return Ok(EvalResult::List(ls.data));
+        }
+
+        Node::Conditional(_) => {
+            todo!()
+        }
+
+        Node::Documentation(_) => {
+            todo!();
         }
     }
-
-    return Err(EvalError::StackError(nodes.clone()));
 }

@@ -1,6 +1,6 @@
 use crate::{
     env::Environment,
-    evaluation::{evaluate, EvalResult},
+    evaluation::{evaluate_node, EvalResult},
 };
 
 use flop_frontend::{lexer::tokenise, parser::parse};
@@ -38,15 +38,19 @@ impl Program {
 
         let mut parse = parse(&mut tokens)?;
 
-        let eval = evaluate(&mut parse, &mut self.state)?;
+        while let Some(node) = parse.pop_front() {
+            let eval = evaluate_node(node, &mut self.state)?;
 
-        match eval {
-            EvalResult::Void => {}
-            EvalResult::List(_) => todo!(),
-            EvalResult::Literal(n) => {
-                println!("{:?}", n);
+            match eval {
+                EvalResult::Void => {}
+                EvalResult::List(stack) => {
+                    println!("{:?}", stack.data)
+                }
+                EvalResult::Literal(n) => {
+                    println!("{:?}", n);
+                }
             }
-        };
+        }
 
         Ok(())
     }

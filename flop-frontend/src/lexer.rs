@@ -1,6 +1,6 @@
 use crate::{
     error::LexerError,
-     push_token,
+    push_token,
     stack::Stack,
     token::{Token, TokenKind},
 };

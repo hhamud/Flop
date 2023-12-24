@@ -1,6 +1,5 @@
 #[macro_export]
 macro_rules! push_token {
-
     (keyword; $stack:expr, $keyword:expr, $kind:expr, $row:expr, $col:expr, $namespace:expr) => {
         $stack.push(Token::new(
             $keyword,
