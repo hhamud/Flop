@@ -1,6 +1,6 @@
 use crate::{
     error::LexerError,
-    push_keyword_token, push_token,
+     push_token,
     stack::Stack,
     token::{Token, TokenKind},
 };
@@ -124,7 +124,8 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
             '(' => {
                 if let Some(keyword) = peek_for_keywords(&mut chars) {
                     match keyword {
-                        "defn" => push_keyword_token!(
+                        "defn" => push_token!(
+                            keyword;
                             stack,
                             keyword,
                             TokenKind::FunctionDefinition,
@@ -132,7 +133,8 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                             col,
                             namespace
                         ),
-                        "setq" => push_keyword_token!(
+                        "setq" => push_token!(
+                            keyword;
                             stack,
                             keyword,
                             TokenKind::VariableDefinition,
@@ -141,7 +143,8 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                             namespace
                         ),
                         "if" => {
-                            push_keyword_token!(
+                            push_token!(
+                                keyword;
                                 stack,
                                 keyword,
                                 TokenKind::Conditional,
