@@ -1,9 +1,8 @@
-use miette::SourceSpan;
-
 use crate::{
     error::LexerError,
+    push_keyword_token, push_token,
     stack::Stack,
-    token::{Line, Token, TokenKind},
+    token::{Token, TokenKind},
 };
 use std::{iter::Peekable, path::PathBuf, str::Chars};
 
@@ -28,7 +27,7 @@ fn extract_string_content(
     chars: &mut Peekable<Chars>,
     stack: &Stack<Token>,
     row: usize,
-    start: usize,
+    col: usize,
     namespace: &PathBuf,
 ) -> Result<Token, LexerError> {
     // check for docstrings
@@ -43,9 +42,6 @@ fn extract_string_content(
         res.push(inner_ch);
     }
 
-    let col = Line::new(start, start + res.len());
-
-    // change this to a token to bubble up
     if let Some(token) = stack.last() {
         match token.token_kind {
             TokenKind::RightSquareBracket => Ok(Token::new(
@@ -53,6 +49,7 @@ fn extract_string_content(
                 TokenKind::DocString,
                 row,
                 col,
+                res.len(),
                 namespace,
             )),
             _ => Ok(Token::new(
@@ -60,17 +57,17 @@ fn extract_string_content(
                 TokenKind::StringLiteral,
                 row,
                 col,
+                res.len(),
                 namespace,
             )),
         }
     } else {
-        // if no stack.last, stack is empty, (defn )
-
         Err(LexerError::IncompleteStringError(Token::new(
             res.as_str(),
             TokenKind::Error,
             row,
             col.clone(),
+            0,
             namespace,
         )))
     }
@@ -83,6 +80,7 @@ fn extract_word(
     namespace: &PathBuf,
 ) -> Result<String, LexerError> {
     let mut word = String::new();
+
     while let Some(&next_char) = chars.peek() {
         if next_char.is_whitespace() || SPECIAL_CHARS.contains(&next_char) {
             break;
@@ -95,11 +93,13 @@ fn extract_word(
                 word.as_str(),
                 TokenKind::Error,
                 row,
-                Line::new(col, col + word.len()),
+                col,
+                word.len(),
                 namespace,
             )));
         }
     }
+
     Ok(word)
 }
 
@@ -109,7 +109,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
     // keep track of right and left brace pairs
     let mut counter = 0;
 
-    let mut row = 1;
+    let mut row = 0;
     let mut col = 0;
 
     while let Some(&ch) = chars.peek() {
@@ -123,48 +123,49 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
             }
             '(' => {
                 if let Some(keyword) = peek_for_keywords(&mut chars) {
-                    col += keyword.len();
                     match keyword {
-                        "defn" => stack.push(Token::new(
+                        "defn" => push_keyword_token!(
+                            stack,
                             keyword,
                             TokenKind::FunctionDefinition,
                             row,
-                            Line::new(col - keyword.len(), col),
-                            namespace,
-                        )),
-                        "setq" => stack.push(Token::new(
+                            col,
+                            namespace
+                        ),
+                        "setq" => push_keyword_token!(
+                            stack,
                             keyword,
                             TokenKind::VariableDefinition,
                             row,
-                            Line::new(col - keyword.len(), col),
-                            namespace,
-                        )),
-                        "if" => stack.push(Token::new(
-                            keyword,
-                            TokenKind::Conditional,
-                            row,
-                            Line::new(col - keyword.len(), col),
-                            namespace,
-                        )),
+                            col,
+                            namespace
+                        ),
+                        "if" => {
+                            push_keyword_token!(
+                                stack,
+                                keyword,
+                                TokenKind::Conditional,
+                                row,
+                                col,
+                                namespace
+                            )
+                        }
                         _ => {
                             return Err(LexerError::KeywordError(Token::new(
                                 keyword,
                                 TokenKind::Error,
                                 row,
-                                Line::new(col - keyword.len(), col),
+                                col,
+                                keyword.len(),
                                 namespace,
                             )))
                         }
-                    }
+                    };
+
+                    col += keyword.len();
                 } else {
                     counter += 1;
-                    stack.push(Token::new(
-                        &ch.to_string(),
-                        TokenKind::LeftRoundBracket,
-                        row,
-                        Line::new(col - 1, col),
-                        namespace,
-                    ));
+                    push_token!(stack, &ch, TokenKind::LeftRoundBracket, row, col, namespace);
                     chars.next();
                 }
             }
@@ -172,36 +173,40 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
             ')' => {
                 if counter >= 1 {
                     counter -= 1;
-                    stack.push(Token::new(
-                        &ch.to_string(),
+                    push_token!(
+                        stack,
+                        &ch,
                         TokenKind::RightRoundBracket,
                         row,
-                        Line::new(col - 1, col),
-                        namespace,
-                    ));
+                        col,
+                        namespace
+                    );
                     chars.next();
                 } else {
                     chars.next();
                 }
             }
             '[' => {
-                stack.push(Token::new(
-                    &ch.to_string(),
+                push_token!(
+                    stack,
+                    &ch,
                     TokenKind::LeftSquareBracket,
                     row,
-                    Line::new(col - 1, col),
-                    namespace,
-                ));
+                    col,
+                    namespace
+                );
                 chars.next();
             }
             ']' => {
-                stack.push(Token::new(
-                    &ch.to_string(),
+                push_token!(
+                    stack,
+                    &ch,
                     TokenKind::RightSquareBracket,
                     row,
-                    Line::new(col - 1, col),
-                    namespace,
-                ));
+                    col,
+                    namespace
+                );
+
                 chars.next();
             }
             '\"' => {
@@ -224,14 +229,8 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                     }
                 } else {
                     // It's a single semicolon, treat it as a normal character
+                    push_token!(stack, &ch, TokenKind::Symbol, row, col, namespace);
                     chars.next();
-                    stack.push(Token::new(
-                        &ch.to_string(),
-                        TokenKind::Symbol,
-                        row,
-                        Line::new(col - 1, col),
-                        namespace,
-                    ));
                 }
             }
             _ => {
@@ -241,7 +240,8 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                         word.as_str(),
                         TokenKind::Integer,
                         row,
-                        Line::new(col, col + word.len()),
+                        col,
+                        word.len(),
                         namespace,
                     ));
                 } else {
@@ -249,10 +249,12 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                         word.as_str(),
                         TokenKind::Symbol,
                         row,
-                        Line::new(col, col + word.len()),
+                        col,
+                        word.len(),
                         namespace,
                     ));
                 }
+                col += word.len() - 1;
             }
         }
     }
