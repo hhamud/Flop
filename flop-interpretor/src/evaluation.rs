@@ -88,23 +88,21 @@ pub fn evaluate_node(mut node: Node, env: &mut Environment) -> Result<EvalResult
         },
         Node::FunctionDefinition(fd) => {
             env.functions.insert(fd.name.token.clone(), fd.clone());
-            return Ok(EvalResult::Void);
+            Ok(EvalResult::Void)
         }
         Node::VariableDefinition(vd) => {
             env.variables.insert(vd.name.token.clone(), vd.clone());
-            return Ok(EvalResult::Void);
+            Ok(EvalResult::Void)
         }
-        Node::Literal(token) => {
-            return Ok(EvalResult::Literal(token));
-        }
+        Node::Literal(token) => Ok(EvalResult::Literal(token)),
+
         Node::VariableCall(vc) => match env.variables.get(&vc.name.token) {
             Some(variable) => Ok(EvalResult::Literal(variable.assignment.clone())),
             None => Err(EvalError::FunctionCallMissing(vc.name)),
         },
-        Node::List(ls) => {
-            return Ok(EvalResult::List(ls.data));
-        }
 
-        _ => todo!(),
+        Node::List(ls) => Ok(EvalResult::List(ls.data)),
+
+        _ => unreachable!(),
     }
 }

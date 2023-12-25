@@ -130,7 +130,6 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
         };
         return Ok(Node::FunctionDefinition(fd));
     } else {
-        // Handle the case when tokens.pop_front() returns None
         return Err(ParseError::StackError {
             name: "Function body stack is empty",
             stack: tokens.clone(),
@@ -162,7 +161,9 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>
 
     while let Some(token_arg) = tokens.pop_front() {
         match token_arg.token_kind {
-            TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral | TokenKind::Symbol => {
+            TokenKind::Symbol => arg_vec.push(Node::VariableCall(VariableCall { name: token_arg })),
+
+            TokenKind::Bool | TokenKind::Integer | TokenKind::StringLiteral => {
                 arg_vec.push(Node::Literal(token_arg))
             }
             TokenKind::LeftRoundBracket => {
