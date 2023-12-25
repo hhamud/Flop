@@ -1,9 +1,13 @@
-use crate::env::Environment;
-use crate::evaluation::{evaluate_node, EvalResult};
+use crate::{
+    env::Environment,
+    evaluation::{evaluate_node, EvalResult},
+};
 use flop_frontend::{lexer::tokenise, parser::parse};
 use miette::Result;
-use std::io::{self, Write};
-use std::path::PathBuf;
+use std::{
+    io::{self, Write},
+    path::PathBuf,
+};
 
 pub struct Repl {
     state: Environment,

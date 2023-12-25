@@ -5,9 +5,7 @@ use crate::{
 
 use flop_frontend::{lexer::tokenise, parser::parse};
 use miette::Result;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
+use std::{fs::File, io::Read, path::PathBuf};
 
 pub struct Program {
     state: Environment,
@@ -25,10 +23,9 @@ impl Program {
 
         let mut content = String::new();
 
-        // temp namespace
         let mut namespace = PathBuf::new();
 
-        namespace.push("file");
+        namespace.push(&path);
 
         let _ = file
             .read_to_string(&mut content)
