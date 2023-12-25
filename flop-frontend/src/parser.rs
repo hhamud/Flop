@@ -144,7 +144,7 @@ fn parse_var_call(token: Token) -> Result<Node, ParseError<Token>> {
 }
 
 fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
-    let mut nested_level = 0;
+    let mut nested_level = 1;
 
     let name = tokens
         .pop_front()
@@ -168,8 +168,6 @@ fn parse_expression(tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>
             }
             TokenKind::LeftRoundBracket => {
                 nested_level += 1;
-                // recursive function call
-                // added to stack linearly
                 let res = parse_expression(tokens)?;
                 arg_vec.push(res)
             }
