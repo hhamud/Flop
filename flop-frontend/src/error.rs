@@ -62,6 +62,14 @@ where
         Token,
     ),
 
+    #[error("Missing Left Bracket")]
+    NoLeftBracket(
+        #[source_code]
+        #[label("Function Parameter's must be contained within Brackets")]
+        Token,
+    ),
+
+    #[error("function parameter")]
     FunctionParameter(
         #[source_code]
         #[label("Function Parameter must be a SYMBOL")]
@@ -86,12 +94,14 @@ where
         Token,
     ),
 
+    #[error("function call name")]
     FunctionCallName(
         #[source_code]
         #[label("Function Name is not of the correct type: SYMBOL")]
         Token,
     ),
 
+    #[error("function call arg")]
     FunctionCallArg(
         #[source_code]
         #[label("Function argument is not of the correct type: NUMBER, STRING, BOOL")]
