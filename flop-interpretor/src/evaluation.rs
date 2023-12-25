@@ -9,26 +9,20 @@ use flop_frontend::{
 };
 
 pub enum EvalResult {
+    /// handles base literals like integers, bools and strings
     Literal(Token),
     Void,
     List(Stack<Node>),
 }
 
-fn parse_literal(node: Node, env: &Environment) -> Result<i64, EvalError> {
-    if let Node::Literal(token) = node {
-        if let Some(variable) = env.variables.get(&token.token) {
-            Ok(variable.assignment.token.parse::<i64>()?)
-        } else {
-            Ok(token.token.parse::<i64>()?)
-        }
-    } else {
-        Err(EvalError::LiteralError(node))
+fn parse_literal(node: Node, env: &mut Environment) -> Result<i64, EvalError> {
+    match evaluate_node(node, env) {
+        Ok(EvalResult::Literal(token)) => Ok(token.token.parse::<i64>()?),
+        _ => unreachable!(),
     }
 }
 
 fn evaluate_math(fc: &mut FunctionCall, env: &mut Environment) -> Result<EvalResult, EvalError> {
-    let namespace = &fc.name.namespace;
-
     let node: Node = fc.arguments.pop_front().unwrap();
 
     let mut oper = parse_literal(node, env)?;
@@ -47,7 +41,7 @@ fn evaluate_math(fc: &mut FunctionCall, env: &mut Environment) -> Result<EvalRes
         1,
         1,
         oper.to_string().len(),
-        namespace,
+        &fc.name.namespace,
     );
 
     Ok(EvalResult::Literal(final_token))
@@ -101,7 +95,6 @@ pub fn evaluate_node(mut node: Node, env: &mut Environment) -> Result<EvalResult
             return Ok(EvalResult::Void);
         }
         Node::Literal(token) => {
-            // handles integers, bools and strings
             return Ok(EvalResult::Literal(token));
         }
         Node::VariableCall(vc) => match env.variables.get(&vc.name.token) {
@@ -112,12 +105,6 @@ pub fn evaluate_node(mut node: Node, env: &mut Environment) -> Result<EvalResult
             return Ok(EvalResult::List(ls.data));
         }
 
-        Node::Conditional(_) => {
-            todo!()
-        }
-
-        Node::Documentation(_) => {
-            todo!();
-        }
+        _ => todo!(),
     }
 }

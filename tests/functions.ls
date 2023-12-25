@@ -1,5 +1,6 @@
-(defn add [x y]
+(defn Add [x y]
  "Adds two numbers"
- (+ x y))
+    (+ x y))
 
-(add 1 1)
+
+(Add 1 1)

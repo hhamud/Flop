@@ -257,7 +257,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                         namespace,
                     ));
                 }
-                col += word.len() - 1;
+                col += word.len();
             }
         }
     }

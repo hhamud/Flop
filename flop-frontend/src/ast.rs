@@ -1,10 +1,4 @@
-use miette::{SourceCode, SourceSpan};
-
-use crate::{
-    error::ParseError,
-    stack::Stack,
-    token::{Token, TokenKind},
-};
+use crate::{stack::Stack, token::Token};
 
 #[derive(Debug, Clone)]
 pub struct FunctionDefinition {
@@ -16,7 +10,7 @@ pub struct FunctionDefinition {
 
 #[derive(Debug, Clone)]
 pub struct Conditional {
-    pub condition: Stack<Node>,
+    pub condition: Stack<FunctionCall>,
     pub true_expression: Stack<Node>,
     pub false_expression: Stack<Node>,
 }
@@ -59,21 +53,4 @@ pub enum Node {
     VariableCall(VariableCall),
     List(List),
     Documentation(Documentation),
-}
-
-impl SourceCode for Node {
-    fn read_span<'a>(
-        &'a self,
-        span: &miette::SourceSpan,
-        context_lines_before: usize,
-        context_lines_after: usize,
-    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
-        todo!()
-    }
-}
-
-impl From<Node> for SourceSpan {
-    fn from(value: Node) -> Self {
-        todo!()
-    }
 }

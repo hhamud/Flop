@@ -1,7 +1,6 @@
-use std::num::ParseIntError;
-
-use flop_frontend::{ast::Node, token::Token};
+use flop_frontend::token::Token;
 use miette::Diagnostic;
+use std::num::ParseIntError;
 use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
@@ -18,20 +17,6 @@ pub enum EvalError {
         #[source_code]
         #[label("Missing Function Call")]
         Token,
-    ),
-
-    #[error("evalerror operationerror")]
-    OperationError(
-        #[source_code]
-        #[label("Incorrect operation Token")]
-        Node,
-    ),
-
-    #[error("evalerror literalerror")]
-    LiteralError(
-        #[source_code]
-        #[label("Node is not a literal token")]
-        Node,
     ),
 
     #[error("Parsing error: {0}")]

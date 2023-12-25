@@ -25,7 +25,6 @@ fn parse_variable_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
         TokenKind::Integer => value_token,
         TokenKind::Bool => value_token,
         TokenKind::StringLiteral => value_token,
-        //TODO: Add ability to assign expressions to variables
         _ => return Err(ParseError::VariableAssignment(value_token)),
     };
 
@@ -79,7 +78,7 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             _ => return Err(ParseError::FunctionName(name)),
         })?;
 
-    let left_bracket = tokens
+    let _left_bracket = tokens
         .pop_front()
         .ok_or(ParseError::StackError {
             name: "No left braket in stack",
@@ -111,8 +110,6 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             _ => Err(ParseError::FunctionDocstring(doc_string)),
         })?;
 
-    // function body
-    // Check if the first token is a LeftRoundBracket
     if let Some(first_token) = tokens.pop_front() {
         if first_token.token_kind != TokenKind::LeftRoundBracket {
             return Err(ParseError::FunctionBody(first_token));
@@ -139,10 +136,6 @@ fn parse_function_definition(tokens: &mut Stack<Token>) -> Result<Node, ParseErr
             stack: tokens.clone(),
         });
     }
-}
-
-fn parse_conditional(_tokens: &mut Stack<Token>) -> Result<Node, ParseError<Token>> {
-    todo!()
 }
 
 fn parse_var_call(token: Token) -> Result<Node, ParseError<Token>> {
@@ -206,10 +199,8 @@ pub fn parse(tokens: &mut Stack<Token>) -> Result<Stack<Node>, ParseError<Token>
             TokenKind::VariableDefinition => nodes.push(parse_variable_definition(tokens)?),
             TokenKind::LeftSquareBracket => nodes.push(parse_list(tokens)?),
             TokenKind::FunctionDefinition => nodes.push(parse_function_definition(tokens)?),
-            TokenKind::Conditional => nodes.push(parse_conditional(tokens)?),
             TokenKind::LeftRoundBracket => nodes.push(parse_expression(tokens)?),
             TokenKind::Symbol => nodes.push(parse_var_call(token)?),
-
             _ => return Err(ParseError::ParseError(token)),
         };
     }

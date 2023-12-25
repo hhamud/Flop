@@ -30,10 +30,10 @@ impl Operation {
     }
 }
 
-impl TryFrom<Token> for Operation {
+impl TryFrom<&Token> for Operation {
     type Error = EvalError;
 
-    fn try_from(token: Token) -> Result<Self, Self::Error> {
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let value: &str = &token.token;
 
         match value {
@@ -46,7 +46,7 @@ impl TryFrom<Token> for Operation {
             "<=" => Ok(Operation::LessThanOrEqual),
             ">" => Ok(Operation::GreaterThan),
             "<" => Ok(Operation::LessThan),
-            _ => Err(EvalError::SymbolError(token)),
+            _ => Err(EvalError::SymbolError(token.clone())),
         }
     }
 }
