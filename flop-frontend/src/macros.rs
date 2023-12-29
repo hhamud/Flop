@@ -11,7 +11,7 @@ macro_rules! push_token {
         ))
     };
 
-    ($stack:expr, $value:expr, $kind:expr, $row:expr, $col:expr, $namespace:expr) => {
+    ($chars:expr, $stack:expr, $value:expr, $kind:expr, $row:expr, $col:expr, $namespace:expr) => {
         $stack.push(Token::new(
             &$value.to_string(),
             $kind,
@@ -20,5 +20,7 @@ macro_rules! push_token {
             1,
             $namespace,
         ));
+
+        $chars.next();
     };
 }

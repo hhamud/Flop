@@ -168,8 +168,15 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                     col += keyword.len();
                 } else {
                     counter += 1;
-                    push_token!(stack, &ch, TokenKind::LeftRoundBracket, row, col, namespace);
-                    chars.next();
+                    push_token!(
+                        chars,
+                        stack,
+                        &ch,
+                        TokenKind::LeftRoundBracket,
+                        row,
+                        col,
+                        namespace
+                    );
                 }
             }
 
@@ -177,6 +184,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                 if counter >= 1 {
                     counter -= 1;
                     push_token!(
+                        chars,
                         stack,
                         &ch,
                         TokenKind::RightRoundBracket,
@@ -184,13 +192,13 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                         col,
                         namespace
                     );
-                    chars.next();
                 } else {
                     chars.next();
                 }
             }
             '[' => {
                 push_token!(
+                    chars,
                     stack,
                     &ch,
                     TokenKind::LeftSquareBracket,
@@ -198,10 +206,10 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                     col,
                     namespace
                 );
-                chars.next();
             }
             ']' => {
                 push_token!(
+                    chars,
                     stack,
                     &ch,
                     TokenKind::RightSquareBracket,
@@ -209,8 +217,6 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                     col,
                     namespace
                 );
-
-                chars.next();
             }
             '\"' => {
                 let string_content =
@@ -232,8 +238,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                     }
                 } else {
                     // It's a single semicolon, treat it as a normal character
-                    push_token!(stack, &ch, TokenKind::Symbol, row, col, namespace);
-                    chars.next();
+                    push_token!(chars, stack, &ch, TokenKind::Symbol, row, col, namespace);
                 }
             }
             _ => {
@@ -257,7 +262,7 @@ pub fn tokenise(code: &String, namespace: &PathBuf) -> Result<Stack<Token>, Lexe
                         namespace,
                     ));
                 }
-                col += word.len();
+                col += word.len() - 1;
             }
         }
     }
