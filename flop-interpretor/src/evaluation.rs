@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use crate::{env::Environment, error::EvalError, operation::Operation};
-
 use flop_frontend::{
     ast::{FunctionCall, Node, VariableDefinition},
     stack::Stack,
     token::{Token, TokenKind},
 };
+use std::collections::HashMap;
 
 pub enum EvalResult {
     /// handles base literals like integers, bools and strings

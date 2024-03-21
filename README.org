@@ -1,0 +1,61 @@
+#+title: Flop
+
+[[https://github.com/hhamud/lisp_rs/actions/workflows/test.yml][https://github.com/hhamud/lisp_rs/actions/workflows/test.yml/badge.svg?style=svg]]
+
+A Lisp to rust transpiler that allows for easy integration with typical rust libraries. The goal of flop is to provide an expressive an dynamic language that leverages the performance and safety features of rust. Flop aims to combine the power of Lisp's metaprogramming capabilities with Rust's strong typing and memory guarantees.
+
+* Installation
+
+#+begin_src shell
+Cargo install --git https://github.com/hhamud/Flop.git
+#+end_src
+
+* Running
+
+To use the repl, run the command in your shell after installing.
+#+begin_src shell
+flop
+#+end_src
+
+To run a file using flop, run this command in your shell after installing.
+#+begin_src shell
+flop --file <file-path>
+#+end_src
+
+* Language Specification
+** Syntax
+Flop follows a S-expressions syntax similiar to traditional lisp languages.
+
+*** Current
+#+begin_src elisp
+Function Definitions
+Variable Binding
+Lists
+Function Calls
+Interactive REPL
+Read code from File
+#+end_src
+
+*** Soon
+#+begin_src elisp
+Static Typing
+Macros
+build system
+full transpiling
+compiling down to LLVM
+#+end_src
+
+
+** Interoperability
+In the future, interopabililty will allow for seamless integration with Rust libraries and enables Flop code to directly call Rust functions.
+
+
+* Error Handling and Debugging
+In the future, Flop will provide comprehensive error handling capabilities and debugging tools for developers.
+
+
+* Tooling and Build System
+The build system is being developed to support easy compilation, testing, and distribution of Flop code.
+
+* Standard Library and Ecosystem
+A standard library with essential language features and functions is being designed and implemented. Additionally, the ecosystem will be built around Flop, supporting popular Rust crates and libraries for a rich development experience.
